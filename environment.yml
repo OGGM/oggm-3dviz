@@ -1,0 +1,21 @@
+name: oggm-3dviz
+channels:
+  - conda-forge
+dependencies:
+  - ipywidgets
+  - jupyterlab
+  - netcdf4
+  - pystac
+  - pystac-client
+  - python>=3.10
+  - pyvista
+  - pyvista-xarray
+  - rioxarray
+  - scikit-image
+  - stackstac
+  - trame
+  - trame-vtk
+  - xarray 
+  - pip
+  - pip:
+    - xpystack
