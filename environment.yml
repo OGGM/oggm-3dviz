@@ -2,6 +2,8 @@ name: oggm-3dviz
 channels:
   - conda-forge
 dependencies:
+  - ffmpeg
+  - imageio=2.27.0
   - ipywidgets
   - jupyterlab
   - netcdf4
@@ -15,7 +17,10 @@ dependencies:
   - stackstac
   - trame
   - trame-vtk
-  - xarray 
+  - xarray
+  - xarray-spatial
+  - zarr
   - pip
   - pip:
     - xpystack
+    - imageio[ffmpeg]

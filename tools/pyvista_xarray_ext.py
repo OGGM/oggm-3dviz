@@ -12,6 +12,7 @@ class PyVistaGlacierSource(BaseSource):
     from the active DataArray (current selected time step).
 
     """
+
     def __init__(self, data_array):
         BaseSource.__init__(
             self,
@@ -43,7 +44,7 @@ class PyVistaGlacierSource(BaseSource):
         try:
             da = self.data_array.isel(time=self.time_step)
             mesh = da.pyvista.mesh(x="x", y="y").warp_by_scalar()
-    
+
             pdo = self.GetOutputData(outInfo, 0)
             pdo.ShallowCopy(mesh)
         except Exception as e:
