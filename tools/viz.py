@@ -1,5 +1,6 @@
 import ipywidgets as widgets
 import xarray as xr
+import numpy as np
 import pyvista as pv
 import pvxarray
 
@@ -14,16 +15,46 @@ class Glacier3DViz:
         ice_thickness: str,
         x: str = "x",
         y: str = "y",
-        time: str = "time",
-        topo_bedrock: str = "topo_bed_rock",
+        x_border: int = 100,
+        y_border: int = 100,
+        zoom: float = 1.,
+        azimuth: float = 0.,
+        elevation: float = 10.,
+        roll: float = 0.,
     ):
-        self.dataset = dataset
         self.x = x
         self.y = y
-        self.time = time
+        self.zoom = zoom
+        self.azimuth = azimuth
+        self.elevation = elevation
+        self.roll = roll
 
-        self.da_topo = dataset[topo_bedrock]
-        self.da_glacier_surf = self.da_topo + dataset[ice_thickness]
+        # resize map to given border values
+        x_middle_point = int(len(dataset[self.x]) / 2)
+        y_middle_point = int(len(dataset[self.y]) / 2)
+        self.dataset = dataset.isel({self.x: slice(x_middle_point - x_border,
+                                                   x_middle_point + x_border),
+                                     self.y: slice(y_middle_point - y_border,
+                                                   y_middle_point + y_border)
+                                     }).load()
+
+        # check if we should use complete years or monthly timesteps
+        if 'time_monthly' in self.dataset[ice_thickness].coords:
+            # ok we should use monthly timesteps
+            self.time = "time_monthly"
+            self.time_display = "calender_year_monthly"
+        else:
+            # we use yearly time steps
+            self.time = "time"
+            self.time_display = "calender_year"
+
+        # calculate the glacier bed topography
+        self.da_topo = self.dataset["topo_smoothed"] - np.where(
+            np.isnan(self.dataset["distributed_thickness"]),
+            0,
+            self.dataset['distributed_thickness']
+        )
+        self.da_glacier_surf = self.da_topo + self.dataset[ice_thickness]
 
         self.topo_texture = None
         self.plotter = None
@@ -47,7 +78,9 @@ class Glacier3DViz:
         topo_mesh = topo_mesh.warp_by_scalar()
         topo_mesh.texture_map_to_plane(use_bounds=True, inplace=True)
 
-        glacier_algo = PyVistaGlacierSource(self.da_glacier_surf)
+        glacier_algo = PyVistaGlacierSource(self.da_glacier_surf,
+                                            self.time,
+                                            self.time_display)
 
         pl = pv.Plotter(
             window_size=[960, 720],
@@ -59,7 +92,7 @@ class Glacier3DViz:
         pl.add_mesh(glacier_algo, color="#CCCCCC")
 
         pl.add_text(
-            f"year: {glacier_algo.time}",
+            f"year: {glacier_algo.time:.0f}",
             position="upper_right",
             font_size=12,
             name="current_year",
@@ -95,7 +128,7 @@ class Glacier3DViz:
             glacier_algo.time_step = change["new"]
             glacier_algo.update()
             plotter.add_text(
-                f"year: {glacier_algo.time}",
+                f"year: {glacier_algo.time:.0f}",
                 position="upper_right",
                 font_size=12,
                 name="current_year",
@@ -135,6 +168,10 @@ class Glacier3DViz:
         plotter, glacier_algo = self._init_plotter()
 
         plotter.camera_position = self.plotter.camera_position
+        plotter.camera.zoom(self.zoom)
+        plotter.camera.azimuth = self.azimuth
+        plotter.camera.elevation = self.elevation
+        plotter.camera.roll = self.roll
         plotter.open_movie(filename, framerate=framerate)
 
         plotter.show(auto_close=False, jupyter_backend="static")
@@ -143,7 +180,7 @@ class Glacier3DViz:
             glacier_algo.time_step = step
             glacier_algo.update()
             plotter.add_text(
-                f"year: {glacier_algo.time}",
+                f"year: {glacier_algo.time:.0f}",
                 position="upper_right",
                 font_size=12,
                 name="current_year",
