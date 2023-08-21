@@ -13,7 +13,7 @@ class PyVistaGlacierSource(BaseSource):
 
     """
 
-    def __init__(self, data_array):
+    def __init__(self, data_array, time_var_main, time_display):
         BaseSource.__init__(
             self,
             nOutputPorts=1,
@@ -21,6 +21,8 @@ class PyVistaGlacierSource(BaseSource):
         )
         self._data_array = data_array
         self._time_step = 0
+        self.time_var_main = time_var_main
+        self.time_display = time_display
 
     @property
     def data_array(self):
@@ -38,11 +40,13 @@ class PyVistaGlacierSource(BaseSource):
 
     @property
     def time(self):
-        return float(self._data_array.time.isel(time=self.time_step))
+        return float(
+            self._data_array[self.time_display].isel(
+                {self.time_var_main: self.time_step}))
 
     def RequestData(self, request, inInfo, outInfo):
         try:
-            da = self.data_array.isel(time=self.time_step)
+            da = self.data_array.isel({self.time_var_main: self.time_step})
             mesh = da.pyvista.mesh(x="x", y="y").warp_by_scalar()
 
             pdo = self.GetOutputData(outInfo, 0)
