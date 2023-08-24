@@ -21,6 +21,9 @@ class Glacier3DViz:
         azimuth: float = 0.,
         elevation: float = 10.,
         roll: float = 0.,
+        topo_bedrock: str = "bedrock",
+        time: str = "time",
+        time_display: str = "calender_year"
     ):
         self.x = x
         self.y = y
@@ -38,22 +41,11 @@ class Glacier3DViz:
                                                    y_middle_point + y_border)
                                      }).load()
 
-        # check if we should use complete years or monthly timesteps
-        if 'time_monthly' in self.dataset[ice_thickness].coords:
-            # ok we should use monthly timesteps
-            self.time = "time_monthly"
-            self.time_display = "calender_year_monthly"
-        else:
-            # we use yearly time steps
-            self.time = "time"
-            self.time_display = "calender_year"
+        # time_display for displaying total years only for monthly timeseries
+        self.time = time
+        self.time_display = time_display
 
-        # calculate the glacier bed topography
-        self.da_topo = self.dataset["topo_smoothed"] - np.where(
-            np.isnan(self.dataset["distributed_thickness"]),
-            0,
-            self.dataset['distributed_thickness']
-        )
+        self.da_topo = self.dataset[topo_bedrock]
         self.da_glacier_surf = self.da_topo + self.dataset[ice_thickness]
 
         self.topo_texture = None
