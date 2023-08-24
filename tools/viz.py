@@ -23,7 +23,7 @@ class Glacier3DViz:
         roll: float = 0.,
         topo_bedrock: str = "bedrock",
         time: str = "time",
-        time_display: str = "calender_year"
+        time_display: str = "calendar_year"
     ):
         self.x = x
         self.y = y
