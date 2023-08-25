@@ -18,9 +18,9 @@ class Glacier3DViz:
         x_border: int = 100,
         y_border: int = 100,
         zoom: float = 1.,
-        azimuth: float = 0.,
-        elevation: float = 10.,
-        roll: float = 0.,
+        azimuth: float | None = None,
+        elevation: float | None = None,
+        roll: float | None = None,
         topo_bedrock: str = "bedrock",
         time: str = "time",
         time_display: str = "calendar_year"
@@ -161,9 +161,12 @@ class Glacier3DViz:
 
         plotter.camera_position = self.plotter.camera_position
         plotter.camera.zoom(self.zoom)
-        plotter.camera.azimuth = self.azimuth
-        plotter.camera.elevation = self.elevation
-        plotter.camera.roll = self.roll
+        if self.azimuth is not None:
+            plotter.camera.azimuth = self.azimuth
+        if self.elevation is not None:
+            plotter.camera.elevation = self.elevation
+        if self.roll is not None:
+            plotter.camera.roll = self.roll
         plotter.open_movie(filename, framerate=framerate)
 
         plotter.show(auto_close=False, jupyter_backend="static")
