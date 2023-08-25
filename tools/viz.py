@@ -15,8 +15,8 @@ class Glacier3DViz:
         ice_thickness: str,
         x: str = "x",
         y: str = "y",
-        x_border: int = 100,
-        y_border: int = 100,
+        x_nr_of_grid_points: int | None = None,
+        y_nr_of_grid_points: int | None = None,
         zoom: float = 1.,
         azimuth: float | None = None,
         elevation: float | None = None,
@@ -32,14 +32,18 @@ class Glacier3DViz:
         self.elevation = elevation
         self.roll = roll
 
-        # resize map to given border values
-        x_middle_point = int(len(dataset[self.x]) / 2)
-        y_middle_point = int(len(dataset[self.y]) / 2)
-        self.dataset = dataset.isel({self.x: slice(x_middle_point - x_border,
-                                                   x_middle_point + x_border),
-                                     self.y: slice(y_middle_point - y_border,
-                                                   y_middle_point + y_border)
-                                     }).load()
+        # resize map to given extend, if None the complete extend is used
+        if x_nr_of_grid_points is not None:
+            x_middle_point = int(len(dataset[self.x]) / 2)
+            dataset = dataset.isel(
+                {self.x: slice(x_middle_point - int(x_nr_of_grid_points / 2),
+                               x_middle_point + int(x_nr_of_grid_points / 2))})
+        if y_nr_of_grid_points is not None:
+            y_middle_point = int(len(dataset[self.y]) / 2)
+            dataset = dataset.isel(
+                {self.y: slice(y_middle_point - int(y_nr_of_grid_points / 2),
+                               y_middle_point + int(y_nr_of_grid_points / 2))})
+        self.dataset = dataset
 
         # time_display for displaying total years only for monthly timeseries
         self.time = time
