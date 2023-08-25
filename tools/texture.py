@@ -1,4 +1,5 @@
 import pathlib
+import shutil
 
 import numpy as np
 import pyproj
@@ -47,9 +48,15 @@ def _download_sentinel_data(bbox: tuple, srs: str = None) -> xr.DataArray:
         max_items=30,
     )
 
+    # convert bbox_lonlat to raw data crs for finer selection at the end
+    ds_raw = xr.open_dataset(search, engine="stac")
+    ds_raw_proj = pyproj.Proj(init=ds_raw.crs)
+    x_min_sel, y_min_sel = ds_raw_proj(bbox_lonlat[0], bbox_lonlat[1])
+    x_max_sel, y_max_sel = ds_raw_proj(bbox_lonlat[2], bbox_lonlat[3])
+
     return (
-        xr.open_dataset(search, engine="stac")
-        .sel(x=slice(bbox[0], bbox[1]), y=slice(bbox[3], bbox[2]))
+        ds_raw
+        .sel(x=slice(x_min_sel, x_max_sel), y=slice(y_max_sel, y_min_sel))
         .get(["B04", "B03", "B02"])
         .to_array(dim="band", name="radiance")
     )
@@ -146,6 +153,10 @@ def get_topo_texture(
         da_img_raw = _download_sentinel_data(bbox, srs=srs)
         da_img_raw = da_img_raw.compute()
         da_img_raw.attrs.clear()
+        # it could be that their is already a folder and if we do not delete it
+        # it raise an error
+        if pathlib.Path(temp_zarr_dataset).exists():
+            shutil.rmtree(temp_zarr_dataset)
         da_img_raw.to_zarr(temp_zarr_dataset)
 
     da_img_processed = _process_sentinel_data(da_img_raw)
