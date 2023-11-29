@@ -3,6 +3,7 @@ import xarray as xr
 import numpy as np
 import pyvista as pv
 import pvxarray
+from pyproj import Proj
 
 from .pyvista_xarray_ext import PyVistaGlacierSource
 from .texture import get_topo_texture
@@ -23,7 +24,8 @@ class Glacier3DViz:
         roll: float | None = None,
         topo_bedrock: str = "bedrock",
         time: str = "time",
-        time_display: str = "calendar_year"
+        time_display: str = "calendar_year",
+        labelled_points: list = []
     ):
         self.x = x
         self.y = y
@@ -48,6 +50,17 @@ class Glacier3DViz:
         # time_display for displaying total years only for monthly timeseries
         self.time = time
         self.time_display = time_display
+
+        # convert labelled point coordinates to dataset proj
+        self.labelled_points_coords = []
+        self.labelled_points_text = []
+        if labelled_points:
+            dataset_proj = Proj(self.dataset.pyproj_srs)
+            for single_point in labelled_points:
+                lat, lon, hgt = single_point[0]
+                lat_proj, lon_proj = dataset_proj(lat, lon)
+                self.labelled_points_coords.append([lat_proj, lon_proj, hgt])
+                self.labelled_points_text.append(single_point[1])
 
         self.da_topo = self.dataset[topo_bedrock]
         self.da_glacier_surf = self.da_topo + self.dataset[ice_thickness]
@@ -94,6 +107,16 @@ class Glacier3DViz:
             name="current_year",
         )
 
+        if self.labelled_points_text:
+            pl.add_point_labels(self.labelled_points_coords,
+                                self.labelled_points_text,
+                                font_size=25,
+                                point_color='black',
+                                point_size=10,
+                                shape=None,
+                                render_points_as_spheres=True,
+                                always_visible=True)
+
         light = pv.Light(
             position=(0, 1, 1),
             light_type="scene light",
@@ -129,6 +152,7 @@ class Glacier3DViz:
                 font_size=12,
                 name="current_year",
             )
+
             plotter.update()
 
         slider.observe(update_glacier, names="value")
