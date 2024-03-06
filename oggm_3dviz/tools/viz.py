@@ -1,12 +1,10 @@
 import ipywidgets as widgets
 import xarray as xr
-import numpy as np
 import pyvista as pv
-import pvxarray
-from pyproj import Proj
 
 from .pyvista_xarray_ext import PyVistaGlacierSource
 from .texture import get_topo_texture
+from .utils import resize_ds_by_nr_of_grid_points
 
 
 class Glacier3DViz:
@@ -25,47 +23,34 @@ class Glacier3DViz:
         topo_bedrock: str = "bedrock",
         time: str = "time",
         time_display: str = "calendar_year",
-        labelled_points: list = []
+        additional_annotations: None | list = None,
     ):
+        # dataset coordinates
         self.x = x
         self.y = y
+        self.topo_bedrock = topo_bedrock
+
+        # camera settings
         self.zoom = zoom
         self.azimuth = azimuth
         self.elevation = elevation
         self.roll = roll
 
-        # resize map to given extend, if None the complete extend is used
-        if x_nr_of_grid_points is not None:
-            x_middle_point = int(len(dataset[self.x]) / 2)
-            dataset = dataset.isel(
-                {self.x: slice(x_middle_point - int(x_nr_of_grid_points / 2),
-                               x_middle_point + int(x_nr_of_grid_points / 2))})
-        if y_nr_of_grid_points is not None:
-            y_middle_point = int(len(dataset[self.y]) / 2)
-            dataset = dataset.isel(
-                {self.y: slice(y_middle_point - int(y_nr_of_grid_points / 2),
-                               y_middle_point + int(y_nr_of_grid_points / 2))})
-        self.dataset = dataset
+        self.additional_annotations = additional_annotations
 
-        # time_display for displaying total years only for monthly timeseries
+        # resize map to given extend, if None the complete extend is used
+        self.dataset = resize_ds_by_nr_of_grid_points(
+            dataset, x_nr_of_grid_points, y_nr_of_grid_points)
+
+        # time_display for displaying total years only
         self.time = time
         self.time_display = time_display
 
-        # convert labelled point coordinates to dataset proj
-        self.labelled_points_coords = []
-        self.labelled_points_text = []
-        if labelled_points:
-            dataset_proj = Proj(self.dataset.pyproj_srs)
-            for single_point in labelled_points:
-                lat, lon, hgt = single_point[0]
-                lat_proj, lon_proj = dataset_proj(lat, lon)
-                self.labelled_points_coords.append([lat_proj, lon_proj, hgt])
-                self.labelled_points_text.append(single_point[1])
-
-        self.da_topo = self.dataset[topo_bedrock]
+        self.da_topo = self.dataset[self.topo_bedrock]
         self.da_glacier_surf = self.da_topo + self.dataset[ice_thickness]
 
         self.topo_texture = None
+        self.topo_mesh = None
         self.plotter = None
         self.glacier_algo = None
         self.widgets = None
@@ -83,9 +68,9 @@ class Glacier3DViz:
         self.topo_texture = get_topo_texture(bbox, srs=srs, use_cache=use_cache)
 
     def _init_plotter(self):
-        topo_mesh = self.da_topo.pyvista.mesh(x=self.x, y=self.y)
-        topo_mesh = topo_mesh.warp_by_scalar()
-        topo_mesh.texture_map_to_plane(use_bounds=True, inplace=True)
+        self.topo_mesh = self.da_topo.pyvista.mesh(x=self.x, y=self.y)
+        self.topo_mesh = self.topo_mesh.warp_by_scalar()
+        self.topo_mesh.texture_map_to_plane(use_bounds=True, inplace=True)
 
         glacier_algo = PyVistaGlacierSource(self.da_glacier_surf,
                                             self.time,
@@ -97,7 +82,7 @@ class Glacier3DViz:
             lighting="three lights",
         )
 
-        pl.add_mesh(topo_mesh, texture=self.topo_texture)
+        pl.add_mesh(self.topo_mesh, texture=self.topo_texture)
         pl.add_mesh(glacier_algo, color="#CCCCCC")
 
         pl.add_text(
@@ -107,15 +92,10 @@ class Glacier3DViz:
             name="current_year",
         )
 
-        if self.labelled_points_text:
-            pl.add_point_labels(self.labelled_points_coords,
-                                self.labelled_points_text,
-                                font_size=25,
-                                point_color='black',
-                                point_size=10,
-                                shape=None,
-                                render_points_as_spheres=True,
-                                always_visible=True)
+        # here we add potential additional features
+        if self.additional_annotations is not None:
+            for annotation in self.additional_annotations:
+                annotation.add_annotation(glacier_3dviz=self, plotter=pl)
 
         light = pv.Light(
             position=(0, 1, 1),
