@@ -11,25 +11,79 @@ class Glacier3DViz:
     def __init__(
         self,
         dataset: xr.Dataset,
-        ice_thickness: str,
         x: str = "x",
         y: str = "y",
-        x_nr_of_grid_points: int | None = None,
-        y_nr_of_grid_points: int | None = None,
         topo_bedrock: str = "bedrock",
+        ice_thickness: str = 'simulated_thickness',
         time: str = "time",
         time_display: str = "calendar_year",
+        x_nr_of_grid_points: int | None = None,
+        y_nr_of_grid_points: int | None = None,
         additional_annotations: None | list = None,
         plotter_args: dict | None = None,
         add_mesh_topo_args: dict | None = None,
-        use_sentinal_texture: bool = False,
-        use_cache_for_sentinal: bool = True,
+        use_sentinel_texture: bool = False,
+        use_cache_for_sentinel: bool = True,
         add_mesh_glacier_args: dict | None = None,
         text_time_args: dict | None = None,
         light_args: dict | None = None,
         background_args: dict | None = None,
         camera_args: dict | None = None,
     ):
+        """Class to visualize a glacier in 3D with pyvista.
+
+        Parameters
+        ----------
+        dataset: xr.Dataset
+            dataset containing the glacier data (topography, ice thickness,
+            possibly more like outlines, etc.)
+        x: str
+            name of the x coordinate in the dataset
+        y: str
+            name of the y coordinate in the dataset
+        topo_bedrock: str
+            name of the topography in the dataset
+        ice_thickness: str
+            name of the ice thickness in the dataset
+        time: str
+            name of the time coordinate in the dataset
+        time_display: str
+            name of the time coordinate in the dataset to be displayed
+        x_nr_of_grid_points: int | None
+            number of grid points in x direction, if None the complete extend
+            is used. See utils.resize_ds_by_nr_of_grid_points
+        y_nr_of_grid_points: int | None
+            number of grid points in y direction, if None the complete extend
+            is used. See utils.resize_ds_by_nr_of_grid_points
+        additional_annotations: None | list
+            list of additional annotations to be added to the map, see
+            oggm_3dviz.tools.map_annotations
+        plotter_args: dict | None
+            additional arguments for the pyvista plotter, see pyvista.Plotter
+        add_mesh_topo_args: dict | None
+            additional arguments for the mesh when adding topo_bedrock to the
+            plotter, see pyvista.Plotter.add_mesh
+        use_sentinel_texture: bool
+            if True, the sentinel texture is used for the topography
+        use_cache_for_sentinel: bool
+            if True, the sentinel texture is cached,
+            see texture.get_topo_texture
+        add_mesh_glacier_args: dict | None
+            additional arguments for the mesh when adding the glacier to the
+            plotter, see pyvista.Plotter.add_mesh
+        text_time_args: dict | None
+            additional arguments for the time text, at least it must contain
+            'time' with a string on which .format(current_year) can be applied,
+            e.g. 'time': 'year: {}', for other options see
+            pyvista.Plotter.add_text
+        light_args: dict | None
+            additional arguments for the light, see pyvista.Light
+        background_args: dict | None
+            additional arguments for the background, see
+            pyvista.plotter.set_background
+        camera_args: dict | None
+            additional arguments for the camera, see pyvista.Plotter.camera
+        """
         # dataset coordinate names
         self.x = x
         self.y = y
@@ -69,9 +123,9 @@ class Glacier3DViz:
         add_mesh_topo_args.setdefault('show_scalar_bar', True)
         self.add_mesh_topo_args = add_mesh_topo_args
 
-        # here we add and potentially download sentinal data
-        if use_sentinal_texture:
-            self.set_topo_texture(use_cache_for_sentinal)
+        # here we add and potentially download sentinel data
+        if use_sentinel_texture:
+            self.set_topo_texture(use_cache_for_sentinel)
 
         # add some default args for add_mesh_glacier (color)
         if add_mesh_glacier_args is None:
@@ -109,7 +163,6 @@ class Glacier3DViz:
         camera_args.setdefault('zoom', 1)
         self.camera_args = camera_args
 
-        self.topo_texture = None
         self.topo_mesh = None
         self.plotter = None
         self.glacier_algo = None
