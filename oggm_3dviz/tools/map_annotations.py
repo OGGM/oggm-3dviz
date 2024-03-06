@@ -265,7 +265,7 @@ class LegendAnnotation(MapAnnotation):
             label[1] = check_color(label[1])
 
         # here setting some defaults for a single entry
-        kwargs.setdefault('bcolor', (0.5, 0.5, 0.5))
+        kwargs.setdefault('bcolor', (0.9, 0.9, 0.9))
         kwargs.setdefault('size', (0.2, 0.1))
         kwargs.setdefault('loc', 'lower center')
         kwargs.setdefault('face', 'rectangle')
