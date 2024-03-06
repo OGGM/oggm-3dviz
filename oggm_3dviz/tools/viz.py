@@ -16,10 +16,6 @@ class Glacier3DViz:
         y: str = "y",
         x_nr_of_grid_points: int | None = None,
         y_nr_of_grid_points: int | None = None,
-        zoom: float = 1.,
-        azimuth: float | None = None,
-        elevation: float | None = None,
-        roll: float | None = None,
         topo_bedrock: str = "bedrock",
         time: str = "time",
         time_display: str = "calendar_year",
@@ -32,17 +28,12 @@ class Glacier3DViz:
         text_time_args: dict | None = None,
         light_args: dict | None = None,
         background_args: dict | None = None,
+        camera_args: dict | None = None,
     ):
         # dataset coordinate names
         self.x = x
         self.y = y
         self.topo_bedrock = topo_bedrock
-
-        # camera settings
-        self.zoom = zoom
-        self.azimuth = azimuth
-        self.elevation = elevation
-        self.roll = roll
 
         self.additional_annotations = additional_annotations
 
@@ -112,6 +103,12 @@ class Glacier3DViz:
         background_args.setdefault('top', 'lightblue')
         self.background_args = background_args
 
+        # add some default camera args
+        if camera_args is None:
+            camera_args = {}
+        camera_args.setdefault('zoom', 1)
+        self.camera_args = camera_args
+
         self.topo_texture = None
         self.topo_mesh = None
         self.plotter = None
@@ -119,12 +116,12 @@ class Glacier3DViz:
         self.widgets = None
 
     def set_topo_texture(self, use_cache: bool = False):
-        bbox = [
-            self.dataset[self.x].min(),
-            self.dataset[self.x].max(),
-            self.dataset[self.y].min(),
-            self.dataset[self.y].max(),
-        ]
+        bbox = (
+            self.dataset[self.x].min().item(),
+            self.dataset[self.x].max().item(),
+            self.dataset[self.y].min().item(),
+            self.dataset[self.y].max().item(),
+        )
 
         srs = self.dataset.attrs["pyproj_srs"]
 
@@ -163,6 +160,9 @@ class Glacier3DViz:
         pl.add_light(light)
 
         pl.set_background(**self.background_args)
+
+        for key_cam, value_cam in self.camera_args.items():
+            setattr(pl.camera, key_cam, value_cam)
 
         return pl, glacier_algo
 
@@ -225,14 +225,6 @@ class Glacier3DViz:
     def export_animation(self, filename="animation.mp4", framerate=10):
         plotter, glacier_algo = self._init_plotter()
 
-        plotter.camera_position = self.plotter.camera_position
-        plotter.camera.zoom(self.zoom)
-        if self.azimuth is not None:
-            plotter.camera.azimuth = self.azimuth
-        if self.elevation is not None:
-            plotter.camera.elevation = self.elevation
-        if self.roll is not None:
-            plotter.camera.roll = self.roll
         plotter.open_movie(filename, framerate=framerate)
 
         plotter.show(auto_close=False, jupyter_backend="static")
@@ -241,10 +233,10 @@ class Glacier3DViz:
             glacier_algo.time_step = step
             glacier_algo.update()
             plotter.add_text(
-                f"year: {glacier_algo.time:.0f}",
-                position="upper_right",
-                font_size=12,
-                name="current_year",
+                self.text_time_args['text'].format(glacier_algo.time),
+                **{key: value
+                   for key, value in self.text_time_args.items()
+                   if key != 'text'}
             )
             plotter.update()
             plotter.write_frame()
