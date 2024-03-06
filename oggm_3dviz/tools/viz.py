@@ -24,8 +24,16 @@ class Glacier3DViz:
         time: str = "time",
         time_display: str = "calendar_year",
         additional_annotations: None | list = None,
+        plotter_args: dict | None = None,
+        add_mesh_topo_args: dict | None = None,
+        use_sentinal_texture: bool = False,
+        use_cache_for_sentinal: bool = True,
+        add_mesh_glacier_args: dict | None = None,
+        text_time_args: dict | None = None,
+        light_args: dict | None = None,
+        background_args: dict | None = None,
     ):
-        # dataset coordinates
+        # dataset coordinate names
         self.x = x
         self.y = y
         self.topo_bedrock = topo_bedrock
@@ -49,6 +57,61 @@ class Glacier3DViz:
         self.da_topo = self.dataset[self.topo_bedrock]
         self.da_glacier_surf = self.da_topo + self.dataset[ice_thickness]
 
+        # add some default args for the plotter
+        if plotter_args is None:
+            plotter_args = {}
+        plotter_args.setdefault('window_size', [960, 720])
+        plotter_args.setdefault('border', False)
+        plotter_args.setdefault('lighting', 'three lights')
+        self.plotter_args = plotter_args
+
+        # add some default args for add_mesh_topo (cmap and colorbar)
+        if add_mesh_topo_args is None:
+            add_mesh_topo_args = {}
+        add_mesh_topo_args.setdefault('cmap', 'terrain')
+        add_mesh_topo_args.setdefault(
+            'scalar_bar_args',
+            {'vertical': True,
+             'fmt': '%.0f m',
+             'position_y': 0.3,
+             'height': 0.4})
+        add_mesh_topo_args.setdefault('show_scalar_bar', True)
+        self.add_mesh_topo_args = add_mesh_topo_args
+
+        # here we add and potentially download sentinal data
+        if use_sentinal_texture:
+            self.set_topo_texture(use_cache_for_sentinal)
+
+        # add some default args for add_mesh_glacier (color)
+        if add_mesh_glacier_args is None:
+            add_mesh_glacier_args = {}
+        add_mesh_glacier_args.setdefault('color', '#CCCCCC')
+        self.add_mesh_glacier_args = add_mesh_glacier_args
+
+        # add some default args for the time text
+        if text_time_args is None:
+            text_time_args = {}
+        text_time_args.setdefault('text', 'year: {:.0f}')
+        text_time_args.setdefault('position', 'upper_right')
+        text_time_args.setdefault('font_size', 12)
+        text_time_args.setdefault('name', 'current_year')  # for overwriting
+        self.text_time_args = text_time_args
+
+        # add some default args for light
+        if light_args is None:
+            light_args = {}
+        light_args.setdefault('position', (0, 1, 1))
+        light_args.setdefault('light_type', 'scene light')
+        light_args.setdefault('intensity', 0.6)
+        self.light_args = light_args
+
+        # add some default args for background
+        if background_args is None:
+            background_args = {}
+        background_args.setdefault('color', 'white')
+        background_args.setdefault('top', 'lightblue')
+        self.background_args = background_args
+
         self.topo_texture = None
         self.topo_mesh = None
         self.plotter = None
@@ -65,7 +128,8 @@ class Glacier3DViz:
 
         srs = self.dataset.attrs["pyproj_srs"]
 
-        self.topo_texture = get_topo_texture(bbox, srs=srs, use_cache=use_cache)
+        self.add_mesh_topo_args['texture'] = get_topo_texture(
+            bbox, srs=srs, use_cache=use_cache)
 
     def _init_plotter(self):
         self.topo_mesh = self.da_topo.pyvista.mesh(x=self.x, y=self.y)
@@ -76,35 +140,29 @@ class Glacier3DViz:
                                             self.time,
                                             self.time_display)
 
-        pl = pv.Plotter(
-            window_size=[960, 720],
-            border=False,
-            lighting="three lights",
-        )
+        pl = pv.Plotter(**self.plotter_args)
 
-        pl.add_mesh(self.topo_mesh, texture=self.topo_texture)
-        pl.add_mesh(glacier_algo, color="#CCCCCC")
+        # add topography with texture (color)
+        pl.add_mesh(self.topo_mesh, **self.add_mesh_topo_args)
 
-        pl.add_text(
-            f"year: {glacier_algo.time:.0f}",
-            position="upper_right",
-            font_size=12,
-            name="current_year",
-        )
+        # add glacier surface
+        pl.add_mesh(glacier_algo, **self.add_mesh_glacier_args)
+
+        pl.add_text(self.text_time_args['text'].format(glacier_algo.time),
+                    **{key: value
+                       for key, value in self.text_time_args.items()
+                       if key != 'text'}
+                    )
 
         # here we add potential additional features
         if self.additional_annotations is not None:
             for annotation in self.additional_annotations:
                 annotation.add_annotation(glacier_3dviz=self, plotter=pl)
 
-        light = pv.Light(
-            position=(0, 1, 1),
-            light_type="scene light",
-            intensity=0.6,
-        )
+        light = pv.Light(**self.light_args)
         pl.add_light(light)
 
-        pl.set_background("white", top="lightblue")
+        pl.set_background(**self.background_args)
 
         return pl, glacier_algo
 
@@ -116,7 +174,7 @@ class Glacier3DViz:
             min=0,
             max=max_step,
             step=1,
-            interval=200,
+            interval=max_step,
             description="Press play",
             disabled=False,
         )
@@ -127,10 +185,10 @@ class Glacier3DViz:
             glacier_algo.time_step = change["new"]
             glacier_algo.update()
             plotter.add_text(
-                f"year: {glacier_algo.time:.0f}",
-                position="upper_right",
-                font_size=12,
-                name="current_year",
+                self.text_time_args['text'].format(glacier_algo.time),
+                **{key: value
+                   for key, value in self.text_time_args.items()
+                   if key != 'text'}
             )
 
             plotter.update()
