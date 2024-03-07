@@ -4,7 +4,7 @@ import pyvista as pv
 
 from .pyvista_xarray_ext import PyVistaGlacierSource
 from .texture import get_topo_texture
-from .utils import resize_ds_by_nr_of_grid_points
+from .utils import resize_ds_by_nr_of_grid_points, get_custom_colormap
 
 
 class Glacier3DViz:
@@ -22,9 +22,9 @@ class Glacier3DViz:
         additional_annotations: None | list = None,
         plotter_args: dict | None = None,
         add_mesh_topo_args: dict | None = None,
+        add_mesh_ice_thick_args: dict | None = None,
         use_sentinel_texture: bool = False,
         use_cache_for_sentinel: bool = True,
-        add_mesh_glacier_args: dict | None = None,
         text_time_args: dict | None = None,
         light_args: dict | None = None,
         background_args: dict | None = None,
@@ -63,14 +63,14 @@ class Glacier3DViz:
         add_mesh_topo_args: dict | None
             additional arguments for the mesh when adding topo_bedrock to the
             plotter, see pyvista.Plotter.add_mesh
+        add_mesh_ice_thick_args: dict | None
+            additional arguments for the mesh when adding ice_thickness to the
+            plotter, see pyvista.Plotter.add_mesh
         use_sentinel_texture: bool
             if True, the sentinel texture is used for the topography
         use_cache_for_sentinel: bool
             if True, the sentinel texture is cached,
             see texture.get_topo_texture
-        add_mesh_glacier_args: dict | None
-            additional arguments for the mesh when adding the glacier to the
-            plotter, see pyvista.Plotter.add_mesh
         text_time_args: dict | None
             additional arguments for the time text, at least it must contain
             'time' with a string on which .format(current_year) can be applied,
@@ -101,6 +101,7 @@ class Glacier3DViz:
 
         self.da_topo = self.dataset[self.topo_bedrock]
         self.da_glacier_surf = self.da_topo + self.dataset[ice_thickness]
+        self.da_glacier_thick = self.dataset[ice_thickness]
 
         # add some default args for the plotter
         if plotter_args is None:
@@ -113,25 +114,41 @@ class Glacier3DViz:
         # add some default args for add_mesh_topo (cmap and colorbar)
         if add_mesh_topo_args is None:
             add_mesh_topo_args = {}
-        add_mesh_topo_args.setdefault('cmap', 'terrain')
-        add_mesh_topo_args.setdefault(
-            'scalar_bar_args',
-            {'vertical': True,
-             'fmt': '%.0f m',
-             'position_y': 0.3,
-             'height': 0.4})
+        add_mesh_topo_args.setdefault('cmap',
+                                      get_custom_colormap('gist_earth'))
+        add_mesh_topo_args.setdefault('scalar_bar_args', {})
+        add_mesh_topo_args['scalar_bar_args'].setdefault('title', 'Bedrock')
+        add_mesh_topo_args['scalar_bar_args'].setdefault('vertical', True)
+        add_mesh_topo_args['scalar_bar_args'].setdefault('fmt', '%.0f m')
+        add_mesh_topo_args['scalar_bar_args'].setdefault('position_x', 0.9)
+        add_mesh_topo_args['scalar_bar_args'].setdefault('position_y', 0.3)
+        add_mesh_topo_args['scalar_bar_args'].setdefault('height', 0.4)
         add_mesh_topo_args.setdefault('show_scalar_bar', True)
         self.add_mesh_topo_args = add_mesh_topo_args
+
+        # add some default args for add_mesh_ice_thickness (cmap and colorbar)
+        if add_mesh_ice_thick_args is None:
+            add_mesh_ice_thick_args = {}
+        add_mesh_ice_thick_args.setdefault('cmap',
+                                           get_custom_colormap('Blues'))
+        add_mesh_ice_thick_args.setdefault('clim',
+                                           [0.1,
+                                            self.da_glacier_thick.max().item()])
+        add_mesh_ice_thick_args.setdefault('scalar_bar_args', {})
+        add_mesh_ice_thick_args['scalar_bar_args'].setdefault('title',
+                                                              'Ice Thickness')
+        add_mesh_ice_thick_args['scalar_bar_args'].setdefault('vertical', True)
+        add_mesh_ice_thick_args['scalar_bar_args'].setdefault('fmt', '%.1f m')
+        add_mesh_ice_thick_args['scalar_bar_args'].setdefault('position_x',
+                                                              0.03)
+        add_mesh_ice_thick_args['scalar_bar_args'].setdefault('position_y', 0.3)
+        add_mesh_ice_thick_args['scalar_bar_args'].setdefault('height', 0.4)
+        add_mesh_ice_thick_args.setdefault('show_scalar_bar', True)
+        self.add_mesh_ice_thick_args = add_mesh_ice_thick_args
 
         # here we add and potentially download sentinel data
         if use_sentinel_texture:
             self.set_topo_texture(use_cache_for_sentinel)
-
-        # add some default args for add_mesh_glacier (color)
-        if add_mesh_glacier_args is None:
-            add_mesh_glacier_args = {}
-        add_mesh_glacier_args.setdefault('color', '#CCCCCC')
-        self.add_mesh_glacier_args = add_mesh_glacier_args
 
         # add some default args for the time text
         if text_time_args is None:
@@ -187,6 +204,7 @@ class Glacier3DViz:
         self.topo_mesh.texture_map_to_plane(use_bounds=True, inplace=True)
 
         glacier_algo = PyVistaGlacierSource(self.da_glacier_surf,
+                                            self.da_glacier_thick,
                                             self.time,
                                             self.time_display)
 
@@ -195,8 +213,9 @@ class Glacier3DViz:
         # add topography with texture (color)
         pl.add_mesh(self.topo_mesh, **self.add_mesh_topo_args)
 
-        # add glacier surface
-        pl.add_mesh(glacier_algo, **self.add_mesh_glacier_args)
+        # add glacier surface, colored by thickness
+        pl.add_mesh(glacier_algo, scalars='thickness',
+                    **self.add_mesh_ice_thick_args)
 
         pl.add_text(self.text_time_args['text'].format(glacier_algo.time),
                     **{key: value
