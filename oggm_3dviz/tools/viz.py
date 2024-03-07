@@ -1,4 +1,5 @@
 import ipywidgets as widgets
+import numpy as np
 import xarray as xr
 import pyvista as pv
 
@@ -16,7 +17,7 @@ class Glacier3DViz:
         topo_bedrock: str = "bedrock",
         ice_thickness: str = 'simulated_thickness',
         time: str = "time",
-        time_display: str = "calendar_year",
+        time_var_display: str = "calendar_year",
         x_nr_of_grid_points: int | None = None,
         y_nr_of_grid_points: int | None = None,
         additional_annotations: None | list = None,
@@ -47,7 +48,7 @@ class Glacier3DViz:
             name of the ice thickness in the dataset
         time: str
             name of the time coordinate in the dataset
-        time_display: str
+        time_var_display: str
             name of the time coordinate in the dataset to be displayed
         x_nr_of_grid_points: int | None
             number of grid points in x direction, if None the complete extend
@@ -97,7 +98,7 @@ class Glacier3DViz:
 
         # time_display for displaying total years only
         self.time = time
-        self.time_display = time_display
+        self.time_var_display = time_var_display
 
         self.da_topo = self.dataset[self.topo_bedrock]
         self.da_glacier_surf = self.da_topo + self.dataset[ice_thickness]
@@ -198,7 +199,7 @@ class Glacier3DViz:
         self.add_mesh_topo_args['texture'] = get_topo_texture(
             bbox, srs=srs, use_cache=use_cache)
 
-    def _init_plotter(self):
+    def _init_plotter(self, inital_time_step=0):
         self.topo_mesh = self.da_topo.pyvista.mesh(x=self.x, y=self.y)
         self.topo_mesh = self.topo_mesh.warp_by_scalar()
         self.topo_mesh.texture_map_to_plane(use_bounds=True, inplace=True)
@@ -206,7 +207,8 @@ class Glacier3DViz:
         glacier_algo = PyVistaGlacierSource(self.da_glacier_surf,
                                             self.da_glacier_thick,
                                             self.time,
-                                            self.time_display)
+                                            self.time_var_display,
+                                            initial_time_step=inital_time_step)
 
         pl = pv.Plotter(**self.plotter_args)
 
@@ -217,11 +219,12 @@ class Glacier3DViz:
         pl.add_mesh(glacier_algo, scalars='thickness',
                     **self.add_mesh_ice_thick_args)
 
-        pl.add_text(self.text_time_args['text'].format(glacier_algo.time),
-                    **{key: value
-                       for key, value in self.text_time_args.items()
-                       if key != 'text'}
-                    )
+        pl.add_text(
+            self.text_time_args['text'].format(glacier_algo.time_display),
+            **{key: value
+               for key, value in self.text_time_args.items()
+               if key != 'text'}
+        )
 
         # here we add potential additional features
         if self.additional_annotations is not None:
@@ -257,7 +260,7 @@ class Glacier3DViz:
             glacier_algo.time_step = change["new"]
             glacier_algo.update()
             plotter.add_text(
-                self.text_time_args['text'].format(glacier_algo.time),
+                self.text_time_args['text'].format(glacier_algo.time_display),
                 **{key: value
                    for key, value in self.text_time_args.items()
                    if key != 'text'}
@@ -305,7 +308,7 @@ class Glacier3DViz:
             glacier_algo.time_step = step
             glacier_algo.update()
             plotter.add_text(
-                self.text_time_args['text'].format(glacier_algo.time),
+                self.text_time_args['text'].format(glacier_algo.time_display),
                 **{key: value
                    for key, value in self.text_time_args.items()
                    if key != 'text'}
@@ -314,3 +317,17 @@ class Glacier3DViz:
             plotter.write_frame()
 
         plotter.close()
+
+    def plot_year(self, time_given, filepath=None, show_plot=True,
+                  **kwargs_screenshot):
+        # find index of closest time stamp matching the given time
+        time_diff = np.abs(self.dataset[self.time].values - time_given)
+        time_index = np.argmin(time_diff)
+
+        plotter, glacier_algo = self._init_plotter(inital_time_step=time_index)
+
+        if show_plot:
+            plotter.show(jupyter_backend="static")
+
+        if filepath is not None:
+            plotter.screenshot(filepath, **kwargs_screenshot)
