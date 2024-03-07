@@ -1,4 +1,7 @@
+import numpy as np
 import xarray as xr
+import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap
 
 
 def resize_ds_by_nr_of_grid_points(
@@ -72,3 +75,17 @@ def check_color(
         else:
             raise ValueError(f"Color '{color}' not found in color_dict! "
                              f"Available colors: {list(color_dict.keys())}")
+
+
+def get_custom_colormap(cmap):
+    def extract_part_of_cmap(cmap, start, end):
+        cmap_orig = plt.cm.get_cmap(cmap)
+        subset_colors = cmap_orig(np.linspace(start, end, 256))
+        return ListedColormap(subset_colors, name=f'{cmap}_custom')
+
+    if cmap == 'gist_earth':
+        return extract_part_of_cmap(cmap, 0.3, 0.95)
+    elif cmap == 'Blues':
+        return extract_part_of_cmap(cmap, 0.2, 1)
+    else:
+        raise NotImplementedError

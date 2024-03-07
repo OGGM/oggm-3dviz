@@ -13,20 +13,28 @@ class PyVistaGlacierSource(BaseSource):
 
     """
 
-    def __init__(self, data_array, time_var_main, time_display):
+    def __init__(self, data_array_glacier_surf,
+                 data_array_glacier_thick,
+                 time_var_main,
+                 time_display):
         BaseSource.__init__(
             self,
             nOutputPorts=1,
             outputType="vtkStructuredGrid",
         )
-        self._data_array = data_array
+        self._data_array_glacier_surf = data_array_glacier_surf
+        self._data_array_glacier_thick = data_array_glacier_thick
         self._time_step = 0
         self.time_var_main = time_var_main
         self.time_display = time_display
 
     @property
-    def data_array(self):
-        return self._data_array
+    def data_array_glacier_surf(self):
+        return self._data_array_glacier_surf
+
+    @property
+    def data_array_glacier_thick(self):
+        return self._data_array_glacier_thick
 
     @property
     def time_step(self):
@@ -41,13 +49,16 @@ class PyVistaGlacierSource(BaseSource):
     @property
     def time(self):
         return float(
-            self._data_array[self.time_display].isel(
+            self._data_array_glacier_surf[self.time_display].isel(
                 {self.time_var_main: self.time_step}))
 
     def RequestData(self, request, inInfo, outInfo):
         try:
-            da = self.data_array.isel({self.time_var_main: self.time_step})
+            da = self.data_array_glacier_surf.isel(
+                {self.time_var_main: self.time_step})
             mesh = da.pyvista.mesh(x="x", y="y").warp_by_scalar()
+            mesh['thickness'] = self.data_array_glacier_thick.isel(
+                {self.time_var_main: self.time_step}).values.flatten()
 
             pdo = self.GetOutputData(outInfo, 0)
             pdo.ShallowCopy(mesh)
