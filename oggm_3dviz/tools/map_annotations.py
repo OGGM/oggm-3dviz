@@ -77,7 +77,7 @@ class ArrowAnnotation(MapAnnotation):
                  z_direction: float = 0.,
                  arrow_magnitude: float = 0.2,
                  text: str = 'N',
-                 text_position: float = 1.3,
+                 text_position_offset: list = None,
                  arrow_kwargs: dict | None = None,
                  text_kwargs: dict | None = None,
                  ):
@@ -106,9 +106,11 @@ class ArrowAnnotation(MapAnnotation):
             corresponds to half the length of the total y-axis
         text: str
             text to display at the arrow
-        text_position: float
-            text_position relative to the arrow, 1 is at the arrow tip, 0 is at
-            the arrow tail
+        text_position_offset: list
+            offset of the text from the arrow tip in [offset_x, offset_y,
+            offset_z], it is given in relative length of the axis (e.g. 0.1 for
+            offset_x means 10% of the total x-axis length,
+            default is [-0.02, 0.01, 0]
         arrow_kwargs: dict
             additional keyword arguments for pv.Plotter.add_arrows
         text_kwargs: dict
@@ -120,7 +122,10 @@ class ArrowAnnotation(MapAnnotation):
         self.y_position = y_position
         self.z_position = z_position
         self.text = text
-        self.text_position = text_position
+        if text_position_offset is None:
+            text_position_offset = [-0.02, 0.01, 0]
+        self.text_position_offset = text_position_offset
+        self.absolute_text_offset = None
         self.arrow_cent = None
 
         self.arrow_direction = np.array([[x_direction, y_direction,
@@ -166,6 +171,19 @@ class ArrowAnnotation(MapAnnotation):
             self.z_position)
         self.arrow_cent = np.array([[x_cent, y_cent, z_cent]])
 
+    def set_absolute_text_offset(self, glacier_3dviz: viz.Glacier3DViz):
+        absolute_text_offset = np.array(self.text_position_offset)
+        absolute_text_offset *= np.array([
+            glacier_3dviz.dataset[glacier_3dviz.x].max().item() -
+            glacier_3dviz.dataset[glacier_3dviz.x].min().item(),
+            glacier_3dviz.dataset[glacier_3dviz.y].max().item() -
+            glacier_3dviz.dataset[glacier_3dviz.y].min().item(),
+            glacier_3dviz.dataset[glacier_3dviz.topo_bedrock].max().item() -
+            glacier_3dviz.dataset[glacier_3dviz.topo_bedrock].min().item()
+        ])
+        self.absolute_text_offset = absolute_text_offset
+
+
     def set_arrow_magnitude(self, glacier_3dviz: viz.Glacier3DViz):
         self.arrow_magnitude = (
                 (glacier_3dviz.dataset[glacier_3dviz.y].max().item() -
@@ -179,6 +197,7 @@ class ArrowAnnotation(MapAnnotation):
         # define arrow properties depending on the map
         self.set_arrow_position(glacier_3dviz)
         self.set_arrow_magnitude(glacier_3dviz)
+        self.set_absolute_text_offset(glacier_3dviz)
 
         plotter.add_arrows(
             cent=self.arrow_cent,
@@ -189,7 +208,7 @@ class ArrowAnnotation(MapAnnotation):
 
         plotter.add_point_labels(
             self.arrow_cent + self.arrow_direction *
-            self.arrow_magnitude * self.text_position,
+            self.arrow_magnitude + self.absolute_text_offset,
             [self.text],
             **self.text_kwargs,
         )
