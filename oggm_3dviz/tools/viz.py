@@ -90,7 +90,8 @@ class Glacier3DViz:
         self.y = y
         self.topo_bedrock = topo_bedrock
 
-        self.additional_annotations = additional_annotations
+        self.additional_annotations_default = additional_annotations
+        self.additional_annotations_use = additional_annotations
 
         # resize map to given extend, if None the complete extend is used
         self.dataset = resize_ds_by_nr_of_grid_points(
@@ -107,84 +108,200 @@ class Glacier3DViz:
         # add some default args for the plotter
         if plotter_args is None:
             plotter_args = {}
-        plotter_args.setdefault('window_size', [960, 720])
-        plotter_args.setdefault('border', False)
-        plotter_args.setdefault('lighting', 'three lights')
-        self.plotter_args = plotter_args
+        self.plotter_args_default = {}
+        self.plotter_args_use = None
 
         # add some default args for add_mesh_topo (cmap and colorbar)
         if add_mesh_topo_args is None:
             add_mesh_topo_args = {}
-        add_mesh_topo_args.setdefault('cmap',
-                                      get_custom_colormap('gist_earth'))
-        add_mesh_topo_args.setdefault('scalar_bar_args', {})
-        add_mesh_topo_args['scalar_bar_args'].setdefault('title', 'Bedrock')
-        add_mesh_topo_args['scalar_bar_args'].setdefault('vertical', True)
-        add_mesh_topo_args['scalar_bar_args'].setdefault('fmt', '%.0f m')
-        add_mesh_topo_args['scalar_bar_args'].setdefault('position_x', 0.9)
-        add_mesh_topo_args['scalar_bar_args'].setdefault('position_y', 0.3)
-        add_mesh_topo_args['scalar_bar_args'].setdefault('height', 0.4)
-        add_mesh_topo_args.setdefault('show_scalar_bar', True)
-        self.add_mesh_topo_args = add_mesh_topo_args
+        self.add_mesh_topo_args_default = {}
+        self.add_mesh_topo_args_use = None
 
         # add some default args for add_mesh_ice_thickness (cmap and colorbar)
         if add_mesh_ice_thick_args is None:
             add_mesh_ice_thick_args = {}
-        add_mesh_ice_thick_args.setdefault('cmap',
-                                           get_custom_colormap('Blues'))
-        add_mesh_ice_thick_args.setdefault('clim',
-                                           [0.1,
-                                            self.da_glacier_thick.max().item()])
-        add_mesh_ice_thick_args.setdefault('scalar_bar_args', {})
-        add_mesh_ice_thick_args['scalar_bar_args'].setdefault('title',
-                                                              'Ice Thickness')
-        add_mesh_ice_thick_args['scalar_bar_args'].setdefault('vertical', True)
-        add_mesh_ice_thick_args['scalar_bar_args'].setdefault('fmt', '%.1f m')
-        add_mesh_ice_thick_args['scalar_bar_args'].setdefault('position_x',
-                                                              0.03)
-        add_mesh_ice_thick_args['scalar_bar_args'].setdefault('position_y', 0.3)
-        add_mesh_ice_thick_args['scalar_bar_args'].setdefault('height', 0.4)
-        add_mesh_ice_thick_args.setdefault('show_scalar_bar', True)
-        self.add_mesh_ice_thick_args = add_mesh_ice_thick_args
+        self.add_mesh_ice_thick_args_default = {}
+        self.add_mesh_ice_thick_args_use = None
+
+        # add some default args for the time text
+        if text_time_args is None:
+            text_time_args = {}
+        self.text_time_args_default = {}
+        self.text_time_args_use = None
+
+        # add some default args for light
+        if light_args is None:
+            light_args = {}
+        self.light_args_default = {}
+        self.light_args_use = None
+
+        # add some default args for background
+        if background_args is None:
+            background_args = {}
+        self.background_args_default = {}
+        self.background_args_use = None
+
+        # add some default camera args
+        if camera_args is None:
+            camera_args = {}
+        self.camera_args_default = {}
+        self.camera_args_use = None
+
+        self.check_given_kwargs(set_default=True,
+                                plotter_args=plotter_args,
+                                add_mesh_topo_args=add_mesh_topo_args,
+                                add_mesh_ice_thick_args=add_mesh_ice_thick_args,
+                                text_time_args=text_time_args,
+                                light_args=light_args,
+                                background_args=background_args,
+                                camera_args=camera_args)
 
         # here we add and potentially download sentinel data
         if use_sentinel_texture:
             self.set_topo_texture(use_cache_for_sentinel)
 
-        # add some default args for the time text
-        if text_time_args is None:
-            text_time_args = {}
-        text_time_args.setdefault('text', 'year: {:.0f}')
-        text_time_args.setdefault('position', 'upper_right')
-        text_time_args.setdefault('font_size', 12)
-        text_time_args.setdefault('name', 'current_year')  # for overwriting
-        self.text_time_args = text_time_args
-
-        # add some default args for light
-        if light_args is None:
-            light_args = {}
-        light_args.setdefault('position', (0, 1, 1))
-        light_args.setdefault('light_type', 'scene light')
-        light_args.setdefault('intensity', 0.6)
-        self.light_args = light_args
-
-        # add some default args for background
-        if background_args is None:
-            background_args = {}
-        background_args.setdefault('color', 'white')
-        background_args.setdefault('top', 'lightblue')
-        self.background_args = background_args
-
-        # add some default camera args
-        if camera_args is None:
-            camera_args = {}
-        camera_args.setdefault('zoom', 1)
-        self.camera_args = camera_args
-
         self.topo_mesh = None
         self.plotter = None
         self.glacier_algo = None
         self.widgets = None
+
+    def check_given_kwargs(self, set_default=False, **kwargs):
+        """Check and set the given kwargs.
+        It is used to set the default values and makes it possible when calling
+        .show or .plot_year or .export_animation to change the default values
+        for more customization.
+        """
+        if 'additional_annotations' in kwargs:
+            self.additional_annotations_use = kwargs['additional_annotations']
+        else:
+            self.additional_annotations_use = \
+                self.additional_annotations_default
+
+        if 'plotter_args' in kwargs:
+            kwargs['plotter_args'].setdefault('window_size', [960, 720])
+            kwargs['plotter_args'].setdefault('border', False)
+            kwargs['plotter_args'].setdefault('lighting', 'three lights')
+
+            if set_default:
+                self.plotter_args_default = kwargs['plotter_args']
+                self.plotter_args_use = self.plotter_args_default
+            else:
+                self.plotter_args_use = kwargs['plotter_args']
+        else:
+            self.plotter_args_use = self.plotter_args_default
+
+        if 'add_mesh_topo_args' in kwargs:
+            kwargs['add_mesh_topo_args'].setdefault(
+                'cmap', get_custom_colormap('gist_earth'))
+            kwargs['add_mesh_topo_args'].setdefault('scalar_bar_args', {})
+            kwargs['add_mesh_topo_args']['scalar_bar_args'].setdefault(
+                'title', 'Bedrock')
+            kwargs['add_mesh_topo_args']['scalar_bar_args'].setdefault(
+                'vertical', True)
+            kwargs['add_mesh_topo_args']['scalar_bar_args'].setdefault(
+                'fmt', '%.0f m')
+            kwargs['add_mesh_topo_args']['scalar_bar_args'].setdefault(
+                'position_x', 0.9)
+            kwargs['add_mesh_topo_args']['scalar_bar_args'].setdefault(
+                'position_y', 0.3)
+            kwargs['add_mesh_topo_args']['scalar_bar_args'].setdefault(
+                'height', 0.4)
+            kwargs['add_mesh_topo_args'].setdefault('show_scalar_bar', True)
+
+            if set_default:
+                self.add_mesh_topo_args_default = kwargs['add_mesh_topo_args']
+                self.add_mesh_topo_args_default.setdefault('texture', None)
+                self.add_mesh_topo_args_use = self.add_mesh_topo_args_default
+            else:
+                self.add_mesh_topo_args_use = kwargs['add_mesh_topo_args']
+        else:
+            self.add_mesh_topo_args_use = self.add_mesh_topo_args_default
+        self.add_mesh_topo_args_use['texture'] = \
+            self.add_mesh_topo_args_default['texture']
+
+        if 'add_mesh_ice_thick_args' in kwargs:
+            kwargs['add_mesh_ice_thick_args'].setdefault(
+                'cmap', get_custom_colormap('Blues'))
+            kwargs['add_mesh_ice_thick_args'].setdefault(
+                'clim', [0.1, self.da_glacier_thick.max().item()])
+            kwargs['add_mesh_ice_thick_args'].setdefault('scalar_bar_args', {})
+            kwargs['add_mesh_ice_thick_args']['scalar_bar_args'].setdefault(
+                'title', 'Ice Thickness')
+            kwargs['add_mesh_ice_thick_args']['scalar_bar_args'].setdefault(
+                'vertical', True)
+            kwargs['add_mesh_ice_thick_args']['scalar_bar_args'].setdefault(
+                'fmt', '%.1f m')
+            kwargs['add_mesh_ice_thick_args']['scalar_bar_args'].setdefault(
+                'position_x', 0.03)
+            kwargs['add_mesh_ice_thick_args']['scalar_bar_args'].setdefault(
+                'position_y', 0.3)
+            kwargs['add_mesh_ice_thick_args']['scalar_bar_args'].setdefault(
+                'height', 0.4)
+            kwargs['add_mesh_ice_thick_args'].setdefault(
+                'show_scalar_bar', True)
+
+            if set_default:
+                self.add_mesh_ice_thick_args_default = \
+                    kwargs['add_mesh_ice_thick_args']
+                self.add_mesh_ice_thick_args_use = \
+                    self.add_mesh_ice_thick_args_default
+            else:
+                self.add_mesh_ice_thick_args_use = \
+                    kwargs['add_mesh_ice_thick_args']
+        else:
+            self.add_mesh_ice_thick_args_use = \
+                self.add_mesh_ice_thick_args_default
+
+        if 'text_time_args' in kwargs:
+            kwargs['text_time_args'].setdefault('text', 'year: {:.0f}')
+            kwargs['text_time_args'].setdefault('position', 'upper_right')
+            kwargs['text_time_args'].setdefault('font_size', 12)
+            # name for overwriting when updating time
+            kwargs['text_time_args'].setdefault('name', 'current_year')
+
+            if set_default:
+                self.text_time_args_default = kwargs['text_time_args']
+                self.text_time_args_use = self.text_time_args_default
+            else:
+                self.text_time_args_use = kwargs['text_time_args']
+        else:
+            self.text_time_args_use = self.text_time_args_default
+
+        if 'light_args' in kwargs:
+            kwargs['light_args'].setdefault('position', (0, 1, 1))
+            kwargs['light_args'].setdefault('light_type', 'scene light')
+            kwargs['light_args'].setdefault('intensity', 0.6)
+
+            if set_default:
+                self.light_args_default = kwargs['light_args']
+                self.light_args_use = self.light_args_default
+            else:
+                self.light_args_use = kwargs['light_args']
+        else:
+            self.light_args_use = self.light_args_default
+
+        if 'background_args' in kwargs:
+            kwargs['background_args'].setdefault('color', 'white')
+            kwargs['background_args'].setdefault('top', 'lightblue')
+
+            if set_default:
+                self.background_args_default = kwargs['background_args']
+                self.background_args_use = self.background_args_default
+            else:
+                self.background_args_use = kwargs['background_args']
+        else:
+            self.background_args_use = self.background_args_default
+
+        if 'camera_args' in kwargs:
+            kwargs['camera_args'].setdefault('zoom', 5.)
+
+            if set_default:
+                self.camera_args_default = kwargs['camera_args']
+                self.camera_args_use = self.camera_args_default
+            else:
+                self.camera_args_use = kwargs['camera_args']
+        else:
+            self.camera_args_use = self.camera_args_default
 
     def set_topo_texture(self, use_cache: bool = False):
         bbox = (
@@ -196,10 +313,12 @@ class Glacier3DViz:
 
         srs = self.dataset.attrs["pyproj_srs"]
 
-        self.add_mesh_topo_args['texture'] = get_topo_texture(
+        self.add_mesh_topo_args_default['texture'] = get_topo_texture(
             bbox, srs=srs, use_cache=use_cache)
 
-    def _init_plotter(self, inital_time_step=0):
+    def _init_plotter(self, inital_time_step=0, **kwargs):
+        self.check_given_kwargs(**kwargs)
+
         self.topo_mesh = self.da_topo.pyvista.mesh(x=self.x, y=self.y)
         self.topo_mesh = self.topo_mesh.warp_by_scalar()
         self.topo_mesh.texture_map_to_plane(use_bounds=True, inplace=True)
@@ -210,33 +329,33 @@ class Glacier3DViz:
                                             self.time_var_display,
                                             initial_time_step=inital_time_step)
 
-        pl = pv.Plotter(**self.plotter_args)
+        pl = pv.Plotter(**self.plotter_args_use)
 
         # add topography with texture (color)
-        pl.add_mesh(self.topo_mesh, **self.add_mesh_topo_args)
+        pl.add_mesh(self.topo_mesh, **self.add_mesh_topo_args_use)
 
         # add glacier surface, colored by thickness
         pl.add_mesh(glacier_algo, scalars='thickness',
-                    **self.add_mesh_ice_thick_args)
+                    **self.add_mesh_ice_thick_args_use)
 
         pl.add_text(
-            self.text_time_args['text'].format(glacier_algo.time_display),
+            self.text_time_args_use['text'].format(glacier_algo.time_display),
             **{key: value
-               for key, value in self.text_time_args.items()
+               for key, value in self.text_time_args_use.items()
                if key != 'text'}
         )
 
         # here we add potential additional features
-        if self.additional_annotations is not None:
-            for annotation in self.additional_annotations:
+        if self.additional_annotations_use is not None:
+            for annotation in self.additional_annotations_use:
                 annotation.add_annotation(glacier_3dviz=self, plotter=pl)
 
-        light = pv.Light(**self.light_args)
+        light = pv.Light(**self.light_args_use)
         pl.add_light(light)
 
-        pl.set_background(**self.background_args)
+        pl.set_background(**self.background_args_use)
 
-        for key_cam, value_cam in self.camera_args.items():
+        for key_cam, value_cam in self.camera_args_use.items():
             setattr(pl.camera, key_cam, value_cam)
 
         return pl, glacier_algo
@@ -260,9 +379,9 @@ class Glacier3DViz:
             glacier_algo.time_step = change["new"]
             glacier_algo.update()
             plotter.add_text(
-                self.text_time_args['text'].format(glacier_algo.time_display),
+                self.text_time_args_use['text'].format(glacier_algo.time_display),
                 **{key: value
-                   for key, value in self.text_time_args.items()
+                   for key, value in self.text_time_args_use.items()
                    if key != 'text'}
             )
 
@@ -286,8 +405,8 @@ class Glacier3DViz:
 
         return main
 
-    def show(self):
-        self.plotter, self.glacier_algo = self._init_plotter()
+    def show(self, **kwargs):
+        self.plotter, self.glacier_algo = self._init_plotter(**kwargs)
         return self._init_widgets(self.plotter, self.glacier_algo)
 
     def close(self):
@@ -297,8 +416,9 @@ class Glacier3DViz:
         if self.plotter is not None:
             self.plotter.close()
 
-    def export_animation(self, filename="animation.mp4", framerate=10):
-        plotter, glacier_algo = self._init_plotter()
+    def export_animation(self, filename="animation.mp4", framerate=10,
+                         **kwargs):
+        plotter, glacier_algo = self._init_plotter(**kwargs)
 
         plotter.open_movie(filename, framerate=framerate)
 
@@ -308,9 +428,9 @@ class Glacier3DViz:
             glacier_algo.time_step = step
             glacier_algo.update()
             plotter.add_text(
-                self.text_time_args['text'].format(glacier_algo.time_display),
+                self.text_time_args_use['text'].format(glacier_algo.time_display),
                 **{key: value
-                   for key, value in self.text_time_args.items()
+                   for key, value in self.text_time_args_use.items()
                    if key != 'text'}
             )
             plotter.update()
@@ -319,15 +439,18 @@ class Glacier3DViz:
         plotter.close()
 
     def plot_year(self, time_given, filepath=None, show_plot=True,
-                  **kwargs_screenshot):
+                  kwargs_screenshot=None, **kwargs):
         # find index of closest time stamp matching the given time
         time_diff = np.abs(self.dataset[self.time].values - time_given)
         time_index = np.argmin(time_diff)
 
-        plotter, glacier_algo = self._init_plotter(inital_time_step=time_index)
+        plotter, glacier_algo = self._init_plotter(inital_time_step=time_index,
+                                                   **kwargs)
 
         if show_plot:
             plotter.show(jupyter_backend="static")
 
         if filepath is not None:
+            if kwargs_screenshot is None:
+                kwargs_screenshot = {}
             plotter.screenshot(filepath, **kwargs_screenshot)
