@@ -24,8 +24,8 @@ class Glacier3DViz:
         plotter_args: dict | None = None,
         add_mesh_topo_args: dict | None = None,
         add_mesh_ice_thick_args: dict | None = None,
-        use_sentinel_texture: bool = False,
-        use_cache_for_sentinel: bool = True,
+        use_satellite_texture: bool = False,
+        use_cache_for_satellite: bool = True,
         text_time_args: dict | None = None,
         light_args: dict | None = None,
         background_args: dict | None = None,
@@ -67,10 +67,10 @@ class Glacier3DViz:
         add_mesh_ice_thick_args: dict | None
             additional arguments for the mesh when adding ice_thickness to the
             plotter, see pyvista.Plotter.add_mesh
-        use_sentinel_texture: bool
-            if True, the sentinel texture is used for the topography
-        use_cache_for_sentinel: bool
-            if True, the sentinel texture is cached,
+        use_satellite_texture: bool
+            if True, a satellite texture is used for the topography
+        use_cache_for_satellite: bool
+            if True, satellite texture is cached,
             see texture.get_topo_texture
         text_time_args: dict | None
             additional arguments for the time text, at least it must contain
@@ -156,9 +156,9 @@ class Glacier3DViz:
                                 background_args=background_args,
                                 camera_args=camera_args)
 
-        # here we add and potentially download sentinel data
-        if use_sentinel_texture:
-            self.set_topo_texture(use_cache_for_sentinel)
+        # here we add and potentially download satellite data
+        if use_satellite_texture:
+            self.set_topo_texture(use_cache_for_satellite)
 
         self.topo_mesh = None
         self.plotter = None
@@ -293,7 +293,7 @@ class Glacier3DViz:
             self.background_args_use = self.background_args_default
 
         if 'camera_args' in kwargs:
-            kwargs['camera_args'].setdefault('zoom', 5.)
+            kwargs['camera_args'].setdefault('zoom', 1.)
 
             if set_default:
                 self.camera_args_default = kwargs['camera_args']
@@ -356,7 +356,11 @@ class Glacier3DViz:
         pl.set_background(**self.background_args_use)
 
         for key_cam, value_cam in self.camera_args_use.items():
-            setattr(pl.camera, key_cam, value_cam)
+            if key_cam == 'zoom':
+                # zoom is not working with setattr()
+                pl.camera.zoom(value_cam)
+            else:
+                setattr(pl.camera, key_cam, value_cam)
 
         return pl, glacier_algo
 
@@ -392,7 +396,7 @@ class Glacier3DViz:
         output = widgets.Output()
 
         with output:
-            plotter.show()
+            plotter.show(jupyter_backend='trame')
 
         main = widgets.VBox([widgets.HBox([play, slider]), output])
 
