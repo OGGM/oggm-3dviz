@@ -50,11 +50,18 @@ class PointAnnotation(MapAnnotation):
         self.longitude_proj = None
         self.text = text
         self.kwargs = kwargs
+        # set some defaults for add_point_labels kwargs
+        self.kwargs.setdefault('font_size', 25)
+        self.kwargs.setdefault('point_color', 'black')
+        self.kwargs.setdefault('point_size', 10)
+        self.kwargs.setdefault('shape', None)
+        self.kwargs.setdefault('render_points_as_spheres', True)
+        self.kwargs.setdefault('always_visible', True)
 
     def reproject_coords(self, glacier_3dviz: viz.Glacier3DViz):
         target_proj = Proj(glacier_3dviz.dataset.pyproj_srs)
         self.latitude_proj, self.longitude_proj = target_proj(
-            self.latitude, self.longitude)
+            self.longitude, self.latitude)
 
     def add_annotation(self,
                        glacier_3dviz: viz.Glacier3DViz,
@@ -149,6 +156,7 @@ class ArrowAnnotation(MapAnnotation):
         text_kwargs.setdefault('shape', None)
         text_kwargs.setdefault('show_points', False)
         text_kwargs.setdefault('font_size', 30)
+        text_kwargs.setdefault('always_visible', True)
         self.text_kwargs = text_kwargs
 
     def set_arrow_position(self, glacier_3dviz: viz.Glacier3DViz):
@@ -182,7 +190,6 @@ class ArrowAnnotation(MapAnnotation):
             glacier_3dviz.dataset[glacier_3dviz.topo_bedrock].min().item()
         ])
         self.absolute_text_offset = absolute_text_offset
-
 
     def set_arrow_magnitude(self, glacier_3dviz: viz.Glacier3DViz):
         self.arrow_magnitude = (
