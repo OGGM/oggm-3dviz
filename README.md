@@ -1,7 +1,6 @@
 # OGGM:3D-Viz
 
-<img src="https://oggm.org/img/logos/oggm_l_alpha.png" alt="OGGM logo" width="200"/>
-<br>
+<img src="https://oggm.org/img/logos/oggm_l_alpha.png" alt="OGGM logo" width="180"/>
 <img src="https://docs.pyvista.org/version/stable/_static/pyvista_logo_sm.png" alt="PyVista logo" width="200"/> 
 
 
