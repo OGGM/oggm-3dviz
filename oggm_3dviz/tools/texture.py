@@ -93,7 +93,7 @@ def _ice_to_bedrock(
     return (new_rgb * 255).astype(np.uint8)
 
 
-def _xr_ice_to_berock(da: xr.DataArray) -> xr.DataArray:
+def _xr_ice_to_bedrock(da: xr.DataArray) -> xr.DataArray:
     return xr.apply_ufunc(
         _ice_to_bedrock,
         da,
@@ -112,7 +112,7 @@ def _process_sentinel_data(da: xr.DataArray) -> xr.DataArray:
         da.median(dim="time")  # smooth radiance and exclude clouds
         .pipe(lambda da: true_color(*da))
         .isel(band=[0, 1, 2])
-        .pipe(lambda da: _xr_ice_to_berock(da))
+        .pipe(lambda da: _xr_ice_to_bedrock(da))
     )
 
 
