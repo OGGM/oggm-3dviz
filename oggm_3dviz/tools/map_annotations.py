@@ -303,3 +303,37 @@ class LegendAnnotation(MapAnnotation):
                        ):
         plotter.add_legend(labels=self.labels,
                            **self.kwargs)
+
+
+class TextAnnotation(MapAnnotation):
+    def __init__(
+            self,
+            text: str = '',
+            position: str | list = 'upper_left',
+            **kwargs):
+        """
+        Add a text annotation to the map
+
+        Parameters
+        ----------
+        text: str
+            text to display
+        position: str | list
+            Position to place the bottom left corner of the text box
+        kwargs: dict
+            additional keyword arguments for pv.Plotter.add_text
+        """
+        super(TextAnnotation, self).__init__()
+
+        self.text = text
+        self.position = position
+        self.kwargs = kwargs
+
+    def add_annotation(self,
+                       glacier_3dviz: viz.Glacier3DViz,
+                       plotter: pv.Plotter,
+                       ):
+        plotter.add_text(
+            self.text,
+            self.position,
+            **self.kwargs)
