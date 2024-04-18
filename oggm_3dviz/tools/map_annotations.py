@@ -1,7 +1,6 @@
 from pyproj import Proj
 import numpy as np
 import pyvista as pv
-import copy
 
 from . import viz
 from .utils import check_color
@@ -221,45 +220,46 @@ class ArrowAnnotation(MapAnnotation):
         )
 
 
-class OutlineAnnotation(MapAnnotation):
+class MaskAnnotation(MapAnnotation):
     def __init__(self,
-                 outline_data: str = 'glacier_ext',
-                 outline_color: str | list = 'black',
+                 mask_data: str = 'glacier_ext',
+                 mask_color: str | list = 'black',
                  ):
         """
-        Adding a gridded outline to the map.
+        Adding a gridded mask to the map. All values equal 1 will be colored.
 
         Parameters
         ----------
-        outline_data: str
-            name of the outline data in the glacier_3dviz.dataset
-        outline_color: str | list
-            color of the outline, either a string or a list of rgba values in
+        mask_data: str
+            name of the mask data in the glacier_3dviz.dataset
+        mask_color: str | list
+            color of the mask, either a string or a list of rgba values in
             255 scale
         """
-        super(OutlineAnnotation, self).__init__()
+        super(MaskAnnotation, self).__init__()
 
-        self.outline_data = outline_data
+        self.mask_data = mask_data
 
         # define color
-        self.outline_color = check_color(outline_color)
-        self.outline_texture = None
+        self.mask_color = check_color(mask_color)
+        self.mask_texture = None
 
-    def set_outline_texture(self, glacier_3dviz: viz.Glacier3DViz):
+    def set_mask_texture(self, glacier_3dviz: viz.Glacier3DViz):
         # define the texture
-        outline_mask = glacier_3dviz.dataset[self.outline_data]
-        outline_texture = np.zeros((*outline_mask.shape, 4),
-                                   dtype=np.uint8)
-        outline_texture[outline_mask == 1, :] = self.outline_color
-        self.outline_texture = pv.numpy_to_texture(outline_texture)
+        mask = glacier_3dviz.dataset[self.mask_data]
+        mask_texture = np.zeros((*mask.shape, 4),
+                                dtype=np.uint8)
+        mask_texture[mask == 1, :] = self.mask_color
+        self.mask_texture = pv.numpy_to_texture(mask_texture)
 
     def add_annotation(self,
                        glacier_3dviz: viz.Glacier3DViz,
                        plotter: pv.Plotter,
                        ):
-        self.set_outline_texture(glacier_3dviz)
-        plotter.add_mesh(copy.deepcopy(glacier_3dviz.topo_mesh),
-                         texture=self.outline_texture)
+        self.set_mask_texture(glacier_3dviz)
+        plotter.add_mesh(glacier_3dviz.topo_mesh,
+                         texture=self.mask_texture,
+                         copy_mesh=True)
 
 
 class LegendAnnotation(MapAnnotation):
