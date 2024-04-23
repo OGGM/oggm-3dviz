@@ -93,7 +93,7 @@ def get_topo_texture(
     p = pyproj.Proj.from_crs(crs_from=srs, crs_to="epsg:3857")
 
     west, south, east, north = bbox
-    bbox_mercator  = p.transform_bounds(*bbox)
+    bbox_mercator = p.transform_bounds(*bbox)
 
     raw_img, ext = cx.bounds2img(
         *bbox_mercator,
@@ -106,7 +106,7 @@ def get_topo_texture(
     if remove_ice:
         processed_img = _ice_to_bedrock(warped_img[:, :, :-1])
     else:
-        processed_img = warped_img[..., :-1] #_ice_to_bedrock(warped_img[:, :, :-1])
+        processed_img = warped_img[..., :-1]
 
     x = np.linspace(warped_ext[0], warped_ext[1], warped_img.shape[1])
     y = np.linspace(warped_ext[3], warped_ext[2], warped_img.shape[0])
