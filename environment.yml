@@ -15,6 +15,7 @@ dependencies:
   - scikit-image
   - trame
   - trame-vtk
+  - trame-vuetify
   - xarray
   - zarr
   - pip
