@@ -1,69 +1,17 @@
-import pathlib
-import shutil
+from typing import Any
 
+import contextily as cx
 import numpy as np
 import pyproj
-import pystac_client
 import skimage
 import pyvista as pv
 import xarray as xr
 from skimage.exposure.exposure import rescale_intensity
 from skimage.util import random_noise
-from xrspatial.multispectral import true_color
-
-
-def _download_sentinel_data(bbox: tuple, srs: str = None) -> xr.DataArray:
-    """Download raw sentinel data from a STAC catalog.
-
-    Query parameters:
-
-    - date range: summer 2020 to avoid snow cover
-    - low cloud cover
-    - visible bands
-
-    TODO: only works for small bbox extent (within the same UTM zone)
-    and in the nothern hemisphere.
-
-    """
-    if srs is not None:
-        proj = pyproj.Proj(srs)
-        lon_min, lat_min = proj(bbox[0], bbox[2], inverse=True)
-        lon_max, lat_max = proj(bbox[1], bbox[3], inverse=True)
-        bbox_lonlat = [lon_min, lat_min, lon_max, lat_max]
-    else:
-        bbox_lonlat = bbox
-
-    catalog = pystac_client.Client.open("https://earth-search.aws.element84.com/v0")
-    catalog.add_conforms_to("ITEM_SEARCH")
-    catalog.add_conforms_to("QUERY")
-
-    search = catalog.search(
-        collections=["sentinel-s2-l2a-cogs"],
-        bbox=bbox_lonlat,
-        query={
-            "eo:cloud_cover": {"lt": 10},
-            "sentinel:valid_cloud_cover": {"eq": True},
-        },
-        datetime="2020-07-01/2020-10-01",
-        max_items=30,
-    )
-
-    # convert bbox_lonlat to raw data crs for finer selection at the end
-    ds_raw = xr.open_dataset(search, engine="stac")
-    ds_raw_proj = pyproj.Proj(init=ds_raw.crs)
-    x_min_sel, y_min_sel = ds_raw_proj(bbox_lonlat[0], bbox_lonlat[1])
-    x_max_sel, y_max_sel = ds_raw_proj(bbox_lonlat[2], bbox_lonlat[3])
-
-    return (
-        ds_raw
-        .sel(x=slice(x_min_sel, x_max_sel), y=slice(y_max_sel, y_min_sel))
-        .get(["B04", "B03", "B02"])
-        .to_array(dim="band", name="radiance")
-    )
 
 
 def _ice_to_bedrock(
-    img: np.ndarray, intensity_threshold: float = 0.55, noise_scale: float = 2e-4
+    img: np.ndarray, intensity_threshold: float = 0.45, noise_scale: float = 2e-4
 ) -> np.ndarray:
     """Simplistic processing to attenuate the ice texture
     and turn it into grey rock.
@@ -78,7 +26,7 @@ def _ice_to_bedrock(
     saturation = img_hsv[:, :, 1]
     value = img_hsv[:, :, 2]
 
-    noise_vars = value * noise_scale
+    noise_vars = np.where(value > intensity_threshold, noise_scale, 1e-10)
 
     value -= rescale_intensity(
         value,
@@ -93,33 +41,13 @@ def _ice_to_bedrock(
     return (new_rgb * 255).astype(np.uint8)
 
 
-def _xr_ice_to_bedrock(da: xr.DataArray) -> xr.DataArray:
-    return xr.apply_ufunc(
-        _ice_to_bedrock,
-        da,
-        input_core_dims=[["x", "y", "band"]],
-        output_core_dims=[["x", "y", "band"]],
-        vectorize=True,
-    )
-
-
-def _process_sentinel_data(da: xr.DataArray) -> xr.DataArray:
-    """Process raw sentinel data and return a true-color RGB
-    image that can be used as texture for the bedrock topography.
-
-    """
-    return (
-        da.median(dim="time")  # smooth radiance and exclude clouds
-        .pipe(lambda da: true_color(*da))
-        .isel(band=[0, 1, 2])
-        .pipe(lambda da: _xr_ice_to_bedrock(da))
-    )
-
-
 def get_topo_texture(
     bbox: tuple[float, float, float, float],
     srs: str | None = None,
-    use_cache: bool = False,
+    use_cache: bool = True,
+    background_source: Any = cx.providers.Esri.WorldImagery,
+    zoom_adjust: int = 1,
+    remove_ice: bool = True,
 ) -> pv.Texture:
     """Get a texture for the bedrock surface topography from
     satellite imagery data.
@@ -134,8 +62,21 @@ def get_topo_texture(
         The BBox (pyproj) coordinate reference system. If None,
         assumes lat/lon coordinates.
     use_cache : bool, optional
-        If True, use previously downloaded imagery data, if present
-        (default: False).
+        If True, use previously downloaded background image data, if present
+        (default: True).
+    background_source : object, optional
+        The provider used for downloading background map data
+        (see https://contextily.readthedocs.io/en/latest/providers_deepdive.html).
+        By default true-color satellite imagery is used.
+    zoom_adjust : int, optional
+        Can be used to adjust the zoom level of the downloaded background map
+        data (higher value will result in more detail). Expects a value of either
+        -1, 0 or 1 (default: 1). A positive value that is too high may cause
+        downloading a great amount of data.
+    remove_ice : bool, optional
+        If True, processed the background image so that the intensity of
+        white areas (snow, ice) is reduced (default: True). Relevant only
+        when true-color satellite imagery is used as background source.
 
     Returns
     -------
@@ -144,21 +85,33 @@ def get_topo_texture(
         clipped to the input bbox.
 
     """
-    temp_zarr_dataset = "topo_texture_cache.zarr"
+    if srs is None:
+        # by default WGS84 lat-lon
+        srs = "epsg:4326"
 
-    if use_cache and pathlib.Path(temp_zarr_dataset).exists():
-        da_img_raw = xr.open_zarr(temp_zarr_dataset)
-        da_img_raw = da_img_raw.load().to_array().squeeze()
+    # transformer input projection to Web Mercator
+    p = pyproj.Proj.from_crs(crs_from=srs, crs_to="epsg:3857")
+
+    west, south, east, north = bbox
+    bbox_mercator = p.transform_bounds(*bbox)
+
+    raw_img, ext = cx.bounds2img(
+        *bbox_mercator,
+        source=background_source,
+        zoom_adjust=zoom_adjust,
+        use_cache=use_cache,
+    )
+    warped_img, warped_ext = cx.warp_tiles(raw_img, ext, srs)
+
+    if remove_ice:
+        processed_img = _ice_to_bedrock(warped_img[:, :, :-1])
     else:
-        da_img_raw = _download_sentinel_data(bbox, srs=srs)
-        da_img_raw = da_img_raw.compute()
-        da_img_raw.attrs.clear()
-        # it could be that their is already a folder and if we do not delete it
-        # it raise an error
-        if pathlib.Path(temp_zarr_dataset).exists():
-            shutil.rmtree(temp_zarr_dataset)
-        da_img_raw.to_zarr(temp_zarr_dataset)
+        processed_img = warped_img[..., :-1]
 
-    da_img_processed = _process_sentinel_data(da_img_raw)
+    x = np.linspace(warped_ext[0], warped_ext[1], warped_img.shape[1])
+    y = np.linspace(warped_ext[3], warped_ext[2], warped_img.shape[0])
 
-    return pv.Texture(da_img_processed.transpose("y", "x", "band").values)
+    da_img = xr.DataArray(processed_img, coords={"x": x, "y": y}, dims=("y", "x", "c"))
+    da_img = da_img.sel(x=slice(west, east), y=slice(north, south))
+
+    return pv.Texture(da_img.values)

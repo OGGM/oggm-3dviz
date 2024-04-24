@@ -1,3 +1,4 @@
+import contextily as cx
 import ipywidgets as widgets
 import numpy as np
 import xarray as xr
@@ -24,8 +25,8 @@ class Glacier3DViz:
         plotter_args: dict | None = None,
         add_mesh_topo_args: dict | None = None,
         add_mesh_ice_thick_args: dict | None = None,
-        use_satellite_texture: bool = False,
-        use_cache_for_satellite: bool = True,
+        use_texture: bool = False,
+        texture_args: dict | None = None,
         text_time_args: dict | None = None,
         light_args: dict | None = None,
         background_args: dict | None = None,
@@ -67,11 +68,10 @@ class Glacier3DViz:
         add_mesh_ice_thick_args: dict | None
             additional arguments for the mesh when adding ice_thickness to the
             plotter, see pyvista.Plotter.add_mesh
-        use_satellite_texture: bool
-            if True, a satellite texture is used for the topography
-        use_cache_for_satellite: bool
-            if True, satellite texture is cached,
-            see texture.get_topo_texture
+        use_texture: bool
+            if True, a background texture is applied on the topography
+        texture_args: dict | None
+            additional arguments for the texture, see texture.get_topo_texture
         text_time_args: dict | None
             additional arguments for the time text, at least it must contain
             'time' with a string on which .format(current_year) can be applied,
@@ -147,6 +147,12 @@ class Glacier3DViz:
         self.camera_args_default = {}
         self.camera_args_use = None
 
+        # add some default texture args
+        if texture_args is None:
+            texture_args = {}
+        self.texture_args_default = {}
+        self.texture_args_use = None
+
         self.check_given_kwargs(set_default=True,
                                 plotter_args=plotter_args,
                                 add_mesh_topo_args=add_mesh_topo_args,
@@ -154,11 +160,13 @@ class Glacier3DViz:
                                 text_time_args=text_time_args,
                                 light_args=light_args,
                                 background_args=background_args,
-                                camera_args=camera_args)
+                                camera_args=camera_args,
+                                texture_args=texture_args)
 
-        # here we add and potentially download satellite data
-        if use_satellite_texture:
-            self.set_topo_texture(use_cache_for_satellite)
+        # here we add and potentially download background map data
+        # and apply it as the topographic texture
+        if use_texture:
+            self.set_topo_texture()
 
         self.topo_mesh = None
         self.plotter = None
@@ -303,18 +311,35 @@ class Glacier3DViz:
         else:
             self.camera_args_use = self.camera_args_default
 
-    def set_topo_texture(self, use_cache: bool = False):
+        if 'texture_args' in kwargs:
+            kwargs['texture_args'].setdefault('use_cache', True)
+            kwargs['texture_args'].setdefault('background_source', cx.providers.Esri.WorldImagery)
+            kwargs['texture_args'].setdefault('zoom_adjust', 1)
+            kwargs['texture_args'].setdefault('remove_ice', True)
+
+            if set_default:
+                self.texture_args_default = kwargs['texture_args']
+                self.texture_args_use = self.texture_args_default
+            else:
+                self.texture_args_use = kwargs['texture_args']
+        else:
+            self.texture_args_use = self.texture_args_default
+
+    def set_topo_texture(self):
         bbox = (
             self.dataset[self.x].min().item(),
-            self.dataset[self.x].max().item(),
             self.dataset[self.y].min().item(),
+            self.dataset[self.x].max().item(),
             self.dataset[self.y].max().item(),
         )
 
         srs = self.dataset.attrs["pyproj_srs"]
 
         self.add_mesh_topo_args_default['texture'] = get_topo_texture(
-            bbox, srs=srs, use_cache=use_cache)
+            bbox,
+            srs=srs,
+            **self.texture_args_use,
+        )
 
     def _init_plotter(self, inital_time_step=0, **kwargs):
         self.check_given_kwargs(**kwargs)
