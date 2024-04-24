@@ -111,7 +111,9 @@ def get_topo_texture(
     x = np.linspace(warped_ext[0], warped_ext[1], warped_img.shape[1])
     y = np.linspace(warped_ext[3], warped_ext[2], warped_img.shape[0])
 
-    da_img = xr.DataArray(processed_img, coords={"x": x, "y": y}, dims=("y", "x", "c"))
+    da_img = xr.DataArray(processed_img,
+                          coords={"x": x, "y": y},
+                          dims=("y", "x", "c"))
     da_img = da_img.sel(x=slice(west, east), y=slice(north, south))
 
     return pv.Texture(da_img.values)

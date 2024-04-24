@@ -79,7 +79,7 @@ def check_color(
 
 def get_custom_colormap(cmap):
     def extract_part_of_cmap(cmap, start, end):
-        cmap_orig = plt.cm.get_cmap(cmap)
+        cmap_orig = plt.colormaps[cmap]
         subset_colors = cmap_orig(np.linspace(start, end, 256))
         return ListedColormap(subset_colors, name=f'{cmap}_custom')
 
