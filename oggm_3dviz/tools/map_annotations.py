@@ -224,6 +224,7 @@ class MaskAnnotation(MapAnnotation):
     def __init__(self,
                  mask_data: str = 'glacier_ext',
                  mask_color: str | list = 'black',
+                 add_z: float = 0.,
                  ):
         """
         Adding a gridded mask to the map. All values equal 1 will be colored.
@@ -235,10 +236,14 @@ class MaskAnnotation(MapAnnotation):
         mask_color: str | list
             color of the mask, either a string or a list of rgba values in
             255 scale
+        add_z: float
+            Small increment to add to the height of used mesh. With this you
+            can decide what is plotted on top of each other.
         """
         super(MaskAnnotation, self).__init__()
 
         self.mask_data = mask_data
+        self.add_z = add_z
 
         # define color
         self.mask_color = check_color(mask_color)
@@ -257,9 +262,12 @@ class MaskAnnotation(MapAnnotation):
                        plotter: pv.Plotter,
                        ):
         self.set_mask_texture(glacier_3dviz)
-        plotter.add_mesh(glacier_3dviz.topo_mesh,
-                         texture=self.mask_texture,
-                         copy_mesh=True)
+
+        topo_mesh = glacier_3dviz.topo_mesh.copy()
+        topo_mesh.points[:, 2] += self.add_z
+
+        plotter.add_mesh(topo_mesh,
+                         texture=self.mask_texture)
 
 
 class LegendAnnotation(MapAnnotation):

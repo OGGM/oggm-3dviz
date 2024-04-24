@@ -313,7 +313,8 @@ class Glacier3DViz:
 
         if 'texture_args' in kwargs:
             kwargs['texture_args'].setdefault('use_cache', True)
-            kwargs['texture_args'].setdefault('background_source', cx.providers.Esri.WorldImagery)
+            kwargs['texture_args'].setdefault('background_source',
+                                              cx.providers.Esri.WorldImagery)
             kwargs['texture_args'].setdefault('zoom_adjust', 1)
             kwargs['texture_args'].setdefault('remove_ice', True)
 
@@ -446,10 +447,10 @@ class Glacier3DViz:
             self.plotter.close()
 
     def export_animation(self, filename="animation.mp4", framerate=10,
-                         **kwargs):
+                         quality=5, **kwargs):
         plotter, glacier_algo = self._init_plotter(**kwargs)
 
-        plotter.open_movie(filename, framerate=framerate)
+        plotter.open_movie(filename, framerate=framerate, quality=quality)
 
         plotter.show(auto_close=False, jupyter_backend="static")
 
