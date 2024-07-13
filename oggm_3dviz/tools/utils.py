@@ -4,27 +4,28 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 
 
-def resize_ds_by_nr_of_grid_points(
+def resize_ds(
         ds: xr.Dataset,
-        x_nr_of_grid_points: int | None = None,
-        y_nr_of_grid_points: int | None = None,
+        x_crop: int | float | None = None,
+        y_crop: int | float | None = None,
         x: str = "x",
         y: str = "y",
 ) -> xr.Dataset:
     """
     Resize a given dataset in a 'centered' manner, e.g. if the number of grid
     points is given as 200, the dataset is resized to 200 grid points with 100
-    grid points on each side of the center.
+    grid points on each side of the center. x_corp and y_crop can also be a crop factor.
+    if x_crop is given as 0.5, the dataset is resized by half its width, always in a centered manner.
 
     Parameters
     ----------
     ds: xr.Dataset
         Dataset to be resized.
-    x_nr_of_grid_points: int | None
-        Number of grid points in x direction. If None, the complete extend is
+    x_crop: float | int | None
+        Number of grid points in x direction or x-crop factor between 0 and 1. If None, the complete extend is
         used.
-    y_nr_of_grid_points: int | None
-        Number of grid points in y direction. If None, the complete extend is
+    y_crop: float | int | None
+        Number of grid points in y direction or y-crop factor between 0 and 1. If None, the complete extend is
         used.
     x: str
         Name of x coordinate of ds.
@@ -32,12 +33,28 @@ def resize_ds_by_nr_of_grid_points(
         Name of y coordinate of ds.
     """
     # resize map to given extend, if None the complete extend is used
-    if x_nr_of_grid_points is not None:
+
+
+    if x_crop is not None:
+        # doesn't make sense to use values bigger than 1.(100%) for cropping, as the data outside is not directly
+        # available
+        if 0. < x_crop <= 1.:
+            x_nr_of_grid_points = x_crop * len(ds[x])
+        else:
+            x_nr_of_grid_points = x_crop
         x_middle_point = int(len(ds[x]) / 2)
         ds = ds.isel(
             {x: slice(x_middle_point - int(x_nr_of_grid_points / 2),
                       x_middle_point + int(x_nr_of_grid_points / 2))})
-    if y_nr_of_grid_points is not None:
+
+
+
+
+    if y_crop is not None:
+        if 0. < y_crop < 1.:
+            y_nr_of_grid_points = y_crop * len(ds[y])
+        else:
+            y_nr_of_grid_points = y_crop
         y_middle_point = int(len(ds[y]) / 2)
         ds = ds.isel(
             {y: slice(y_middle_point - int(y_nr_of_grid_points / 2),
