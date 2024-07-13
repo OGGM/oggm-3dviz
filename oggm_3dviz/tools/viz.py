@@ -6,7 +6,7 @@ import pyvista as pv
 
 from .pyvista_xarray_ext import PyVistaGlacierSource
 from .texture import get_topo_texture
-from .utils import resize_ds_by_nr_of_grid_points, get_custom_colormap
+from .utils import resize_ds, get_custom_colormap
 
 
 class Glacier3DViz:
@@ -19,8 +19,8 @@ class Glacier3DViz:
         ice_thickness: str = 'simulated_thickness',
         time: str = "time",
         time_var_display: str = "calendar_year",
-        x_nr_of_grid_points: int | None = None,
-        y_nr_of_grid_points: int | None = None,
+        x_crop: int | None = None,
+        y_crop: int | None = None,
         additional_annotations: None | list = None,
         plotter_args: dict | None = None,
         add_mesh_topo_args: dict | None = None,
@@ -51,11 +51,11 @@ class Glacier3DViz:
             name of the time coordinate in the dataset
         time_var_display: str
             name of the time coordinate in the dataset to be displayed
-        x_nr_of_grid_points: int | None
-            number of grid points in x direction, if None the complete extend
+        x_crop: float| int | None
+            number of grid points in x direction or crop factor between 0 and 1, if None the complete extend
             is used. See utils.resize_ds_by_nr_of_grid_points
-        y_nr_of_grid_points: int | None
-            number of grid points in y direction, if None the complete extend
+        y_crop: float | int | None
+            number of grid points in y direction or crop factor between 0 and 1, if None the complete extend
             is used. See utils.resize_ds_by_nr_of_grid_points
         additional_annotations: None | list
             list of additional annotations to be added to the map, see
@@ -94,8 +94,8 @@ class Glacier3DViz:
         self.additional_annotations_use = additional_annotations
 
         # resize map to given extend, if None the complete extend is used
-        self.dataset = resize_ds_by_nr_of_grid_points(
-            dataset, x_nr_of_grid_points, y_nr_of_grid_points)
+        self.dataset = resize_ds(
+            dataset, x_crop, y_crop)
 
         # time_display for displaying total years only
         self.time = time
