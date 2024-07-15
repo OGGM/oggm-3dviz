@@ -47,9 +47,6 @@ def resize_ds(
             {x: slice(x_middle_point - int(x_nr_of_grid_points / 2),
                       x_middle_point + int(x_nr_of_grid_points / 2))})
 
-
-
-
     if y_crop is not None:
         if 0. < y_crop < 1.:
             y_nr_of_grid_points = y_crop * len(ds[y])
