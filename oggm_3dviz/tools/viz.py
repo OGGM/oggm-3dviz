@@ -19,8 +19,8 @@ class Glacier3DViz:
         ice_thickness: str = 'simulated_thickness',
         time: str = "time",
         time_var_display: str = "calendar_year",
-        x_crop: int | None = None,
-        y_crop: int | None = None,
+        x_crop: int | float | None = None,
+        y_crop: int | float | None = None,
         additional_annotations: None | list = None,
         plotter_args: dict | None = None,
         add_mesh_topo_args: dict | None = None,
@@ -53,10 +53,10 @@ class Glacier3DViz:
             name of the time coordinate in the dataset to be displayed
         x_crop: float| int | None
             number of grid points in x direction or crop factor between 0 and 1, if None the complete extend
-            is used. See utils.resize_ds_by_nr_of_grid_points
+            is used. See utils.resize_ds
         y_crop: float | int | None
             number of grid points in y direction or crop factor between 0 and 1, if None the complete extend
-            is used. See utils.resize_ds_by_nr_of_grid_points
+            is used. See utils.resize_ds
         additional_annotations: None | list
             list of additional annotations to be added to the map, see
             oggm_3dviz.tools.map_annotations
