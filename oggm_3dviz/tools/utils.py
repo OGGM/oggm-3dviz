@@ -13,7 +13,7 @@ def resize_ds(
 ) -> xr.Dataset:
     """
     Resize a given dataset in a 'centered' manner, e.g. if the number of grid
-    points(set via 'x_crop' and 'y_crop' is given as 200, the dataset is resized to 200 grid points with 100
+    points(set via 'x_crop' and 'y_crop') is given as 200, the dataset is resized to 200 grid points with 100
     grid points on each side of the center. x_corp and y_crop can also be a crop factor.
     if x_crop is given as 0.5, the dataset is resized by half its width, always in a centered manner.
 
