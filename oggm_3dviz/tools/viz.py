@@ -16,6 +16,7 @@ class Glacier3DViz:
         x: str = "x",
         y: str = "y",
         topo_bedrock: str = "bedrock",
+        update_bedrock_with_time: bool = False,
         ice_thickness: str = 'simulated_thickness',
         time: str = "time",
         time_var_display: str = "calendar_year",
@@ -45,6 +46,8 @@ class Glacier3DViz:
             name of the y coordinate in the dataset
         topo_bedrock: str
             name of the topography in the dataset
+        update_bedrock_with_time: bool
+            update the bedrock with time
         ice_thickness: str
             name of the ice thickness in the dataset
         time: str
@@ -101,9 +104,25 @@ class Glacier3DViz:
         self.time = time
         self.time_var_display = time_var_display
 
-        self.da_topo = self.dataset[self.topo_bedrock]
-        self.da_glacier_surf = self.da_topo + self.dataset[ice_thickness]
-        self.da_glacier_thick = self.dataset[ice_thickness]
+        # get topography
+        if update_bedrock_with_time:
+            raise NotImplementedError('Time update of bedrock not supported'
+                                      'yet!')
+        else:
+            if len(self.dataset[self.topo_bedrock].coords) == 3:
+                # ok the given topography has a time coordinate, just take the
+                # first
+                self.da_topo = self.dataset[self.topo_bedrock].isel(
+                    {self.time: 0})
+            else:
+                self.da_topo = self.dataset[self.topo_bedrock]
+
+        # ignore ice thicknesses equal to 0
+        self.da_glacier_thick = xr.where(
+            self.dataset[ice_thickness] == 0.0,
+            np.nan,
+            self.dataset[ice_thickness])
+        self.da_glacier_surf = self.da_topo + self.da_glacier_thick
 
         # add some default args for the plotter
         if plotter_args is None:
