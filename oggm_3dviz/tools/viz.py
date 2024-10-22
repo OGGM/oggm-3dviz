@@ -342,7 +342,7 @@ class Glacier3DViz:
             **self.texture_args_use,
         )
 
-    def _init_plotter(self, inital_time_step=0, **kwargs):
+    def _init_plotter(self, inital_time_step=0, external_plotter=None, **kwargs):
         self.check_given_kwargs(**kwargs)
 
         self.topo_mesh = self.da_topo.pyvista.mesh(x=self.x, y=self.y)
@@ -355,8 +355,10 @@ class Glacier3DViz:
                                             self.time_var_display,
                                             initial_time_step=inital_time_step)
 
-        pl = pv.Plotter(**self.plotter_args_use)
-
+        if external_plotter:
+            pl = external_plotter# (**self.plotter_args_use)
+        else:
+            pl = pv.Plotter(**self.plotter_args_use)
         # add topography with texture (color)
         pl.add_mesh(self.topo_mesh, **self.add_mesh_topo_args_use)
 
@@ -388,6 +390,11 @@ class Glacier3DViz:
             else:
                 setattr(pl.camera, key_cam, value_cam)
 
+        return pl, glacier_algo
+
+    def init_plotter(self, inital_time_step=0, external_plotter=None, **kwargs):
+        """public wrapper"""
+        pl, glacier_algo = self._init_plotter(inital_time_step, external_plotter, **kwargs)
         return pl, glacier_algo
 
     def _init_widgets(self, plotter, glacier_algo):
@@ -453,60 +460,27 @@ class Glacier3DViz:
 
 
     def export_animation(self, filename="animation.mp4", framerate=10,
-                         quality=5, second_plot=None,  **kwargs):
+                         quality=5, **kwargs):
 
-        if second_plot:
-            plotter_1, glacier_algo_1 = self._init_plotter(**kwargs)
-            plotter_2, glacier_algo_2 = second_plot
-            plotter = pv.Plotter(shape=(1, 2), border=False)
-            plotter.subplot(0, 0)
-            plotter.add_mesh(plotter_1.mesh)
-            plotter.subplot(0, 1)
-            plotter.add_mesh(plotter_2.mesh)
+        plotter, glacier_algo = self._init_plotter(**kwargs)
 
-            plotter.open_movie(filename, framerate=framerate, quality=quality)
+        plotter.open_movie(filename, framerate=framerate, quality=quality)
 
-            plotter.show(auto_close=False, jupyter_backend="static")
+        plotter.show(auto_close=False, jupyter_backend="static")
 
-            for step in range(self.dataset[self.time].size):
-                glacier_algo_1.time_step = step
-                glacier_algo_1.update()
-                glacier_algo_2.time_step = step
-                glacier_algo_2.update()
-                # plotter.add_text(
-                #     self.text_time_args_use['text'].format(glacier_algo.time_display),
-                #     **{key: value
-                #        for key, value in self.text_time_args_use.items()
-                #        if key != 'text'}
-                # )
-                plotter.update()
-                plotter.write_frame()
+        for step in range(self.dataset[self.time].size):
+            glacier_algo.time_step = step
+            glacier_algo.update()
+            plotter.add_text(
+                self.text_time_args_use['text'].format(glacier_algo.time_display),
+                **{key: value
+                   for key, value in self.text_time_args_use.items()
+                   if key != 'text'}
+            )
+            plotter.update()
+            plotter.write_frame()
 
-            plotter.close()
-
-
-
-
-        else:
-            plotter, glacier_algo = self._init_plotter(**kwargs)
-
-            plotter.open_movie(filename, framerate=framerate, quality=quality)
-
-            plotter.show(auto_close=False, jupyter_backend="static")
-
-            for step in range(self.dataset[self.time].size):
-                glacier_algo.time_step = step
-                glacier_algo.update()
-                plotter.add_text(
-                    self.text_time_args_use['text'].format(glacier_algo.time_display),
-                    **{key: value
-                       for key, value in self.text_time_args_use.items()
-                       if key != 'text'}
-                )
-                plotter.update()
-                plotter.write_frame()
-
-            plotter.close()
+        plotter.close()
 
     def plot_year(self, time_given, filepath=None, show_plot=True,
                   kwargs_screenshot=None, **kwargs):
