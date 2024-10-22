@@ -1,5 +1,6 @@
 import numpy as np
 import xarray as xr
+import pyvista as pv
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 
@@ -103,3 +104,42 @@ def get_custom_colormap(cmap):
         return extract_part_of_cmap(cmap, 0.2, 1)
     else:
         raise NotImplementedError
+
+
+def animate_multiple(viz_objects, common_title, shape=None,
+                     framerate=10, quality=5, resolution_factor=1
+                     ):
+    """
+    this functions allows to animate multiple 3Dviz objects in one video.
+    """
+
+    res_x, res_y = (960, 720)
+    # check if length of viz_objects and shape is matching
+    if shape is None:
+        shape= (1, len(viz_objects))
+    if len(shape) != 2:
+        raise ValueError('Shape should be a 2D array or tuple!')
+    n_elements = shape[0]*shape[1]
+    if len(viz_objects) != n_elements:
+        raise ValueError('Number of Glacier3DViz-Obj. should equal the number of plot-elements defined by \'shape\'!')
+
+    res_x = res_x * shape[1] * resolution_factor
+    res_y = res_y * shape[0] * resolution_factor
+    # Initialize plotter for side-by-side visualization
+    plotter = pv.Plotter(window_size=[res_x, res_y], shape=shape,  border=False, lighting='three lights')
+    # Configure the first subplot
+    k=0
+    plotters = [None] * n_elements
+    glacier_algos=[None] * n_elements
+    for i in range(shape[0]):
+        for j in range(shape[1]):
+            plotter.subplot(i, j)
+            plotters[k], glacier_algos[k] = viz_objects[k].init_plotter(external_plotter=plotter)
+            # plotter.add_mesh(plotters[k].mesh)
+            # counter for the n-th viz_object
+            k+=1
+    # static plot
+    plotter.show(auto_close=False, jupyter_backend="static")
+
+
+
