@@ -106,7 +106,7 @@ def get_custom_colormap(cmap):
         raise NotImplementedError
 
 
-def animate_multiple(viz_objects, common_title, shape=None,
+def animate_multiple(viz_objects, filepath, common_title='glacier plots', shape=None,
                      framerate=10, quality=5, resolution_factor=1
                      ):
     """
@@ -126,20 +126,55 @@ def animate_multiple(viz_objects, common_title, shape=None,
     res_x = res_x * shape[1] * resolution_factor
     res_y = res_y * shape[0] * resolution_factor
     # Initialize plotter for side-by-side visualization
-    plotter = pv.Plotter(window_size=[res_x, res_y], shape=shape,  border=False, lighting='three lights')
-    # Configure the first subplot
+    plotter = pv.Plotter(window_size=[res_x, res_y], shape=shape,  border=False, lighting='three lights', )
+                         ## these weights can change the size(width and height) of the subplots in relation to
+                         ## but also haven't helped with the 'centered title' issue. 
+                         # row_weights=[0.3], col_weights=[0.3, 0.7])
+
     k=0
     plotters = [None] * n_elements
     glacier_algos=[None] * n_elements
     for i in range(shape[0]):
         for j in range(shape[1]):
             plotter.subplot(i, j)
+
             plotters[k], glacier_algos[k] = viz_objects[k].init_plotter(external_plotter=plotter)
             # plotter.add_mesh(plotters[k].mesh)
             # counter for the n-th viz_object
             k+=1
     # static plot
+
+    # THIS HAS BEEN SUGGESTED AS FINAL OPTION BY CHATGPT TO GET A CENTERED, OVERLAYING HEADING
+    # # Use vtkTextActor for title (outside subplots)
+    # from vtkmodules.vtkRenderingCore import vtkTextActor
+    # title_actor = vtkTextActor()
+    # title_actor.SetInput("My Centered Title")
+    # title_actor.GetTextProperty().SetFontSize(24)
+    # title_actor.GetTextProperty().SetColor(0, 0, 0)  # Set color to black
+    # title_actor.SetPosition2(200, 570)  # Adjust this for fine-tuning the position
+    # title_actor.GetTextProperty().SetJustificationToCentered()
+    # # Add title actor to the renderer (not to a specific subplot)
+    # plotter.renderer.AddActor2D(title_actor)
+
+
+    ## idea was to make the subplots smaller so that a centered title can be added on top,
+    ## but the 'set_viewport' method is not available
+    # plotter.subplot(0, 0)
+    # plotter.set_viewport(0.0, 0.5, 0.0, 0.85)
+    # plotter.subplot(0, 1)
+    # plotter.set_viewport(0.5, 1.0, 0.0, 0.85)
+    plotter.add_text("My Centered Title", position=(-0.2, 0.9), font_size=20, color='black',
+                     viewport=True)
     plotter.show(auto_close=False, jupyter_backend="static")
 
+    plotter.open_movie(filepath, framerate=framerate, quality=quality)
+    for step in range(viz_objects[0].dataset[viz_objects[0].time].size):
+        for i in glacier_algos:
+            glacier_algos[i].time_step = step
+            glacier_algos[i].update()
+
+        plotter.update()
+        plotter.write_frame()
+    plotter.close()
 
 
