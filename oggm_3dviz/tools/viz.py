@@ -361,7 +361,7 @@ class Glacier3DViz:
             **self.texture_args_use,
         )
 
-    def _init_plotter(self, inital_time_step=0, **kwargs):
+    def _init_plotter(self, initial_time_step=0, external_plotter=None, **kwargs):
         self.check_given_kwargs(**kwargs)
 
         self.topo_mesh = self.da_topo.pyvista.mesh(x=self.x, y=self.y)
@@ -372,9 +372,12 @@ class Glacier3DViz:
                                             self.da_glacier_thick,
                                             self.time,
                                             self.time_var_display,
-                                            initial_time_step=inital_time_step)
+                                            initial_time_step=initial_time_step)
 
-        pl = pv.Plotter(**self.plotter_args_use)
+        if external_plotter:
+            pl = external_plotter
+        else:
+            pl = pv.Plotter(**self.plotter_args_use)
 
         # add topography with texture (color)
         pl.add_mesh(self.topo_mesh, **self.add_mesh_topo_args_use)
@@ -407,6 +410,17 @@ class Glacier3DViz:
             else:
                 setattr(pl.camera, key_cam, value_cam)
 
+        self.glacier_algo = glacier_algo
+        self.plotter = pl
+
+        return pl, glacier_algo
+
+    def init_plotter(self, initial_time_step=0, external_plotter=None,
+                     **kwargs):
+        pl, glacier_algo = self._init_plotter(
+            initial_time_step=initial_time_step,
+            external_plotter=external_plotter,
+            **kwargs)
         return pl, glacier_algo
 
     def _init_widgets(self, plotter, glacier_algo):
@@ -455,8 +469,8 @@ class Glacier3DViz:
         return main
 
     def show(self, **kwargs):
-        self.plotter, self.glacier_algo = self._init_plotter(**kwargs)
-        return self._init_widgets(self.plotter, self.glacier_algo)
+        plotter, glacier_algo = self._init_plotter(**kwargs)
+        return self._init_widgets(plotter, glacier_algo)
 
     def close(self):
         if self.widgets is not None:
@@ -464,6 +478,18 @@ class Glacier3DViz:
                 w.close()
         if self.plotter is not None:
             self.plotter.close()
+
+    def update_glacier(self, step):
+        self.glacier_algo.time_step = step
+        self.glacier_algo.update()
+        self.plotter.add_text(
+            self.text_time_args_use['text'].format(self.glacier_algo.time_display),
+            **{key: value
+               for key, value in self.text_time_args_use.items()
+               if key != 'text'}
+        )
+
+        self.plotter.update()
 
     def export_animation(self, filename="animation.mp4", framerate=10,
                          quality=5, **kwargs):
@@ -474,15 +500,7 @@ class Glacier3DViz:
         plotter.show(auto_close=False, jupyter_backend="static")
 
         for step in range(self.dataset[self.time].size):
-            glacier_algo.time_step = step
-            glacier_algo.update()
-            plotter.add_text(
-                self.text_time_args_use['text'].format(glacier_algo.time_display),
-                **{key: value
-                   for key, value in self.text_time_args_use.items()
-                   if key != 'text'}
-            )
-            plotter.update()
+            self.update_glacier(step)
             plotter.write_frame()
 
         plotter.close()
@@ -503,3 +521,5 @@ class Glacier3DViz:
             if kwargs_screenshot is None:
                 kwargs_screenshot = {}
             plotter.screenshot(filepath, **kwargs_screenshot)
+
+        plotter.close()
