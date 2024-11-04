@@ -7,7 +7,8 @@ import pyvista as pv
 from .pyvista_xarray_ext import PyVistaGlacierSource
 from .texture import get_topo_texture
 from .utils import (resize_ds, get_custom_colormap,
-                    get_nice_thickness_colorbar_labels)
+                    get_nice_thickness_colorbar_labels,
+                    get_camera_position_per_frame)
 
 
 class Glacier3DViz:
@@ -520,7 +521,7 @@ class Glacier3DViz:
         if self.plotter is not None:
             self.plotter.close()
 
-    def update_glacier(self, step):
+    def update_glacier(self, step, camera_position_per_step=None):
         self.glacier_algo.time_step = step
         self.glacier_algo.update()
         self.plotter.add_text(
@@ -530,18 +531,33 @@ class Glacier3DViz:
                if key != 'text'}
         )
 
+        if camera_position_per_step:
+            self.plotter.camera.position = camera_position_per_step[step]
+
         self.plotter.update()
 
     def export_animation(self, filename="animation.mp4", framerate=10,
-                         quality=5, **kwargs):
+                         quality=5, moving_camera_start_and_end_point=None,
+                         **kwargs):
         plotter, glacier_algo = self._init_plotter(**kwargs)
+
+        if moving_camera_start_and_end_point:
+            camera_position_per_frame = get_camera_position_per_frame(
+                start_point=moving_camera_start_and_end_point[0],
+                end_point=moving_camera_start_and_end_point[1],
+                nr_frames=self.dataset[self.time].size,
+            )
+        else:
+            camera_position_per_frame = None
 
         plotter.open_movie(filename, framerate=framerate, quality=quality)
 
         plotter.show(auto_close=False, jupyter_backend="static")
 
         for step in range(self.dataset[self.time].size):
-            self.update_glacier(step)
+            self.update_glacier(
+                step,
+                camera_position_per_step=camera_position_per_frame)
             plotter.write_frame()
 
         plotter.close()
