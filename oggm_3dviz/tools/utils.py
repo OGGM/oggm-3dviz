@@ -108,6 +108,23 @@ def get_custom_colormap(cmap):
         raise NotImplementedError
 
 
+def get_nice_thickness_colorbar_labels(max_value, min_value=0.1,
+                                       n_labels=5, rounding_value=20):
+    # nice labels, only ending in 0 and 5, n_labels and rounding_value must fit
+    max_value = np.ceil(max_value / rounding_value) * rounding_value
+    ticks = np.linspace(min_value, max_value, n_labels)
+
+    def custom_label(value):
+        if value == min_value:
+            return f"{min_value} m"
+        else:
+            return f"{value:.0f} m"
+
+    annotations = {tick: custom_label(tick) for tick in ticks}
+
+    return max_value, annotations
+
+
 def add_main_title_for_subplots(plotter, title, kwargs_title):
     # Create an overlay renderer that spans the entire window
     overlay_renderer = vtk.vtkRenderer()

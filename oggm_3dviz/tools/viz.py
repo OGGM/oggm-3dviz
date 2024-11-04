@@ -6,7 +6,8 @@ import pyvista as pv
 
 from .pyvista_xarray_ext import PyVistaGlacierSource
 from .texture import get_topo_texture
-from .utils import resize_ds, get_custom_colormap
+from .utils import (resize_ds, get_custom_colormap,
+                    get_nice_thickness_colorbar_labels)
 
 
 class Glacier3DViz:
@@ -26,6 +27,7 @@ class Glacier3DViz:
         plotter_args: dict | None = None,
         add_mesh_topo_args: dict | None = None,
         add_mesh_ice_thick_args: dict | None = None,
+        add_ice_thick_lookuptable_args: dict | None = None,
         use_texture: bool = False,
         texture_args: dict | None = None,
         text_time_args: dict | None = None,
@@ -71,6 +73,9 @@ class Glacier3DViz:
         add_mesh_ice_thick_args: dict | None
             additional arguments for the mesh when adding ice_thickness to the
             plotter, see pyvista.Plotter.add_mesh
+        add_ice_thick_lookuptable_args: dict | None
+            additional arguments for the lookuptable when customizing the
+            colorbar labels of the ice thickness, see pyvista.LookupTable
         use_texture: bool
             if True, a background texture is applied on the topography
         texture_args: dict | None
@@ -142,6 +147,12 @@ class Glacier3DViz:
         self.add_mesh_ice_thick_args_default = {}
         self.add_mesh_ice_thick_args_use = None
 
+        # add some default args for add_ice_thick_lookuptable_args
+        if add_ice_thick_lookuptable_args is None:
+            add_ice_thick_lookuptable_args = {}
+        self.add_ice_thick_lookuptable_args_default = {}
+        self.add_ice_thick_lookuptable_args_use = None
+
         # add some default args for the time text
         if text_time_args is None:
             text_time_args = {}
@@ -172,15 +183,17 @@ class Glacier3DViz:
         self.texture_args_default = {}
         self.texture_args_use = None
 
-        self.check_given_kwargs(set_default=True,
-                                plotter_args=plotter_args,
-                                add_mesh_topo_args=add_mesh_topo_args,
-                                add_mesh_ice_thick_args=add_mesh_ice_thick_args,
-                                text_time_args=text_time_args,
-                                light_args=light_args,
-                                background_args=background_args,
-                                camera_args=camera_args,
-                                texture_args=texture_args)
+        self.check_given_kwargs(
+            set_default=True,
+            plotter_args=plotter_args,
+            add_mesh_topo_args=add_mesh_topo_args,
+            add_mesh_ice_thick_args=add_mesh_ice_thick_args,
+            add_ice_thick_lookuptable_args=add_ice_thick_lookuptable_args,
+            text_time_args=text_time_args,
+            light_args=light_args,
+            background_args=background_args,
+            camera_args=camera_args,
+            texture_args=texture_args)
 
         # here we add and potentially download background map data
         # and apply it as the topographic texture
@@ -247,19 +260,17 @@ class Glacier3DViz:
             self.add_mesh_topo_args_default['texture']
 
         if 'add_mesh_ice_thick_args' in kwargs:
-            kwargs['add_mesh_ice_thick_args'].setdefault(
-                'cmap', get_custom_colormap('Blues'))
-            kwargs['add_mesh_ice_thick_args'].setdefault(
-                'clim', [0.1, self.da_glacier_thick.max().item()])
             kwargs['add_mesh_ice_thick_args'].setdefault('scalar_bar_args', {})
             kwargs['add_mesh_ice_thick_args']['scalar_bar_args'].setdefault(
-                'title', 'Ice Thickness')
+                'title', 'Ice Thickness                      ')
+            kwargs['add_mesh_ice_thick_args']['scalar_bar_args'].setdefault(
+                'n_labels', 0)
+            kwargs['add_mesh_ice_thick_args']['scalar_bar_args'].setdefault(
+                'color', 'white')
             kwargs['add_mesh_ice_thick_args']['scalar_bar_args'].setdefault(
                 'vertical', True)
             kwargs['add_mesh_ice_thick_args']['scalar_bar_args'].setdefault(
-                'fmt', '%.1f m')
-            kwargs['add_mesh_ice_thick_args']['scalar_bar_args'].setdefault(
-                'position_x', 0.03)
+                'position_x', 0.1)
             kwargs['add_mesh_ice_thick_args']['scalar_bar_args'].setdefault(
                 'position_y', 0.3)
             kwargs['add_mesh_ice_thick_args']['scalar_bar_args'].setdefault(
@@ -279,8 +290,33 @@ class Glacier3DViz:
             self.add_mesh_ice_thick_args_use = \
                 self.add_mesh_ice_thick_args_default
 
+        if 'add_ice_thick_lookuptable_args' in kwargs:
+            kwargs['add_ice_thick_lookuptable_args'].setdefault(
+                'cmap', get_custom_colormap('Blues'))
+            kwargs['add_ice_thick_lookuptable_args'].setdefault(
+                'n_labels', 5)
+            max_value, annotations = get_nice_thickness_colorbar_labels(
+                self.da_glacier_thick.max().item())
+            kwargs['add_ice_thick_lookuptable_args'].setdefault(
+                'scalar_range', [0.1, max_value])
+            kwargs['add_ice_thick_lookuptable_args'].setdefault(
+                'annotations', annotations)
+
+            if set_default:
+                self.add_ice_thick_lookuptable_args_default = \
+                    kwargs['add_ice_thick_lookuptable_args']
+                self.add_ice_thick_lookuptable_args_use = \
+                    self.add_ice_thick_lookuptable_args_default
+            else:
+                self.add_ice_thick_lookuptable_args_use = \
+                    kwargs['add_ice_thick_lookuptable_args']
+        else:
+            self.add_ice_thick_lookuptable_args_use = \
+                self.add_ice_thick_lookuptable_args_default
+
         if 'text_time_args' in kwargs:
             kwargs['text_time_args'].setdefault('text', 'year: {:.0f}')
+            kwargs['text_time_args'].setdefault('color', 'white')
             kwargs['text_time_args'].setdefault('position', 'upper_right')
             kwargs['text_time_args'].setdefault('font_size', 12)
             # name for overwriting when updating time
@@ -308,8 +344,7 @@ class Glacier3DViz:
             self.light_args_use = self.light_args_default
 
         if 'background_args' in kwargs:
-            kwargs['background_args'].setdefault('color', 'white')
-            kwargs['background_args'].setdefault('top', 'lightblue')
+            kwargs['background_args'].setdefault('color', 'black')
 
             if set_default:
                 self.background_args_default = kwargs['background_args']
@@ -382,8 +417,14 @@ class Glacier3DViz:
         # add topography with texture (color)
         pl.add_mesh(self.topo_mesh, **self.add_mesh_topo_args_use)
 
-        # add glacier surface, colored by thickness
+        # add glacier surface, colored by thickness, using custom colorbar
+        custom_colorbar = pv.LookupTable(
+            **{key: value
+               for key, value in self.add_ice_thick_lookuptable_args_use.items()
+               if key != 'n_labels'}
+        )
         pl.add_mesh(glacier_algo, scalars='thickness',
+                    cmap=custom_colorbar,
                     **self.add_mesh_ice_thick_args_use)
 
         pl.add_text(
