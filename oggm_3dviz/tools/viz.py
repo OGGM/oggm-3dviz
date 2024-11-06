@@ -8,7 +8,7 @@ from .pyvista_xarray_ext import PyVistaGlacierSource
 from .texture import get_topo_texture
 from .utils import (resize_ds, get_custom_colormap,
                     get_nice_thickness_colorbar_labels,
-                    get_camera_position_per_frame)
+                    get_camera_position_per_frame, get_rotating_camera_position)
 
 
 class Glacier3DViz:
@@ -550,29 +550,78 @@ class Glacier3DViz:
         self.plotter.update()
 
     def export_animation(self, filename="animation.mp4", framerate=10,
-                         quality=5, moving_camera_start_and_end_point=None,
+                         quality=5, camera_trajectory='linear', linear_camera_start_and_end_point=None,
+                         rotate_camera_start_and_end_angle=None, rotate_camera_height=5, rotate_camera_radius=1,
                          **kwargs):
+        """
+        Export an animation of the glacier model.
+
+        Parameters:
+        - filename (str): The name of the output video file. Defaults to "animation.mp4".
+        - framerate (int): Frames per second for the video. Defaults to 10.
+        - quality (int): Quality of the output video (scale may vary based on the library). Defaults to 5.
+        - camera_trajectory (str): Type of camera movement ('linear' or 'rotate'). Defaults to 'linear'.
+        - linear_camera_start_and_end_point (tuple): Start and end points for the camera in 'linear' trajectory.
+            the start and end point is multiplied with the topography dimensions.
+            e.g. (0,0,0) is the topography center
+                 (1,0,0) is at the edge
+                 [(0, -1, 10),  (0, -0.5, 5)] zoom from an edge to the center
+        - rotate_camera_start_and_end_angle (tuple): Start and end angles for the camera in 'rotate' trajectory.
+            range from 0 to 360
+            e.g [200, 220]
+        - rotate_camera_height (int): The height of the rotated camera multiplied by elevation range. Defaults to 5.
+        - rotate_camera_radius (int): The radius of the rotated camera multiplied by map dimensions Defaults to 1.
+        - **kwargs: Additional keyword arguments to initialize the plotter.
+        """
+
+        # Initialize the plotter and glacier algorithm with additional parameters
         plotter, glacier_algo = self._init_plotter(**kwargs)
 
-        if moving_camera_start_and_end_point:
+        # Determine camera positions based on the chosen trajectory type
+        if camera_trajectory == 'linear':
+            # Calculate a linear trajectory for the camera between start and end points
             camera_position_per_frame = get_camera_position_per_frame(
-                start_point=moving_camera_start_and_end_point[0],
-                end_point=moving_camera_start_and_end_point[1],
-                nr_frames=self.dataset[self.time].size,
+                x_coordinates=self.dataset[self.x].data,  # X-axis data for camera movement
+                y_coordinates=self.dataset[self.y].data,  # Y-axis data for camera movement
+                z_elevation=self.dataset[self.topo_bedrock].data,  # Elevation data for camera movement
+                start_point=linear_camera_start_and_end_point[0],  # Starting point of the camera
+                end_point=linear_camera_start_and_end_point[1],  # Ending point of the camera
+                nr_frames=self.dataset[self.time].size,  # Number of frames based on time steps
+            )
+        elif camera_trajectory == 'rotate':
+            # Calculate a rotating trajectory for the camera around the glacier
+            camera_position_per_frame = get_rotating_camera_position(
+                x_coordinates=self.dataset[self.x].data,  # X-axis data for camera rotation
+                y_coordinates=self.dataset[self.y].data,  # Y-axis data for camera rotation
+                z_elevation=self.dataset[self.topo_bedrock].data,  # Elevation data for camera rotation
+                start_angle=rotate_camera_start_and_end_angle[0],  # Starting angle for rotation in degrees
+                end_angle=rotate_camera_start_and_end_angle[1],  # Ending angle for rotation in degrees
+                camera_radius=rotate_camera_radius,  # Distance of the camera to the topo center
+                camera_height=rotate_camera_height,  # Height of the camera above the glacier
+                nr_frames=self.dataset[self.time].size,  # Number of frames based on time steps
             )
         else:
+            # If no valid trajectory is specified, set camera positions to None
             camera_position_per_frame = None
 
+        # Open a movie file to record the animation with specified framerate and quality
         plotter.open_movie(filename, framerate=framerate, quality=quality)
 
+        # Display the plotter window without closing it automatically
+        # 'jupyter_backend="static"' is used for compatibility with Jupyter notebooks
         plotter.show(auto_close=False, jupyter_backend="static")
 
+        # Iterate through each time step to update the glacier and capture frames
         for step in range(self.dataset[self.time].size):
+            # Update the glacier model for the current step
             self.update_glacier(
                 step,
-                camera_position_per_step=camera_position_per_frame)
+                camera_position_per_step=camera_position_per_frame  # Update camera position if applicable
+            )
+            # Write the current frame to the movie file
             plotter.write_frame()
 
+        # Close the plotter and finalize the movie file
         plotter.close()
 
     def plot_year(self, time_given, filepath=None, show_plot=True,
