@@ -6,7 +6,9 @@ import pyvista as pv
 
 from .pyvista_xarray_ext import PyVistaGlacierSource
 from .texture import get_topo_texture
-from .utils import resize_ds, get_custom_colormap
+from .utils import (resize_ds, get_custom_colormap,
+                    get_nice_thickness_colorbar_labels,
+                    get_camera_position_per_frame)
 
 
 class Glacier3DViz:
@@ -26,6 +28,7 @@ class Glacier3DViz:
         plotter_args: dict | None = None,
         add_mesh_topo_args: dict | None = None,
         add_mesh_ice_thick_args: dict | None = None,
+        add_ice_thick_lookuptable_args: dict | None = None,
         use_texture: bool = False,
         show_topo_side_walls: bool = False,
         texture_args: dict | None = None,
@@ -72,6 +75,9 @@ class Glacier3DViz:
         add_mesh_ice_thick_args: dict | None
             additional arguments for the mesh when adding ice_thickness to the
             plotter, see pyvista.Plotter.add_mesh
+        add_ice_thick_lookuptable_args: dict | None
+            additional arguments for the lookuptable when customizing the
+            colorbar labels of the ice thickness, see pyvista.LookupTable
         use_texture: bool
             if True, a background texture is applied on the topography
         show_topo_side_walls: bool
@@ -153,6 +159,12 @@ class Glacier3DViz:
         self.add_mesh_ice_thick_args_default = {}
         self.add_mesh_ice_thick_args_use = None
 
+        # add some default args for add_ice_thick_lookuptable_args
+        if add_ice_thick_lookuptable_args is None:
+            add_ice_thick_lookuptable_args = {}
+        self.add_ice_thick_lookuptable_args_default = {}
+        self.add_ice_thick_lookuptable_args_use = None
+
         # add some default args for the time text
         if text_time_args is None:
             text_time_args = {}
@@ -183,15 +195,17 @@ class Glacier3DViz:
         self.texture_args_default = {}
         self.texture_args_use = None
 
-        self.check_given_kwargs(set_default=True,
-                                plotter_args=plotter_args,
-                                add_mesh_topo_args=add_mesh_topo_args,
-                                add_mesh_ice_thick_args=add_mesh_ice_thick_args,
-                                text_time_args=text_time_args,
-                                light_args=light_args,
-                                background_args=background_args,
-                                camera_args=camera_args,
-                                texture_args=texture_args)
+        self.check_given_kwargs(
+            set_default=True,
+            plotter_args=plotter_args,
+            add_mesh_topo_args=add_mesh_topo_args,
+            add_mesh_ice_thick_args=add_mesh_ice_thick_args,
+            add_ice_thick_lookuptable_args=add_ice_thick_lookuptable_args,
+            text_time_args=text_time_args,
+            light_args=light_args,
+            background_args=background_args,
+            camera_args=camera_args,
+            texture_args=texture_args)
 
         # here we add and potentially download background map data
         # and apply it as the topographic texture
@@ -239,6 +253,8 @@ class Glacier3DViz:
             kwargs['add_mesh_topo_args']['scalar_bar_args'].setdefault(
                 'fmt', '%.0f m')
             kwargs['add_mesh_topo_args']['scalar_bar_args'].setdefault(
+                'color', 'white')
+            kwargs['add_mesh_topo_args']['scalar_bar_args'].setdefault(
                 'position_x', 0.9)
             kwargs['add_mesh_topo_args']['scalar_bar_args'].setdefault(
                 'position_y', 0.3)
@@ -258,19 +274,17 @@ class Glacier3DViz:
             self.add_mesh_topo_args_default['texture']
 
         if 'add_mesh_ice_thick_args' in kwargs:
-            kwargs['add_mesh_ice_thick_args'].setdefault(
-                'cmap', get_custom_colormap('Blues'))
-            kwargs['add_mesh_ice_thick_args'].setdefault(
-                'clim', [0.1, self.da_glacier_thick.max().item()])
             kwargs['add_mesh_ice_thick_args'].setdefault('scalar_bar_args', {})
             kwargs['add_mesh_ice_thick_args']['scalar_bar_args'].setdefault(
-                'title', 'Ice Thickness')
+                'title', 'Ice Thickness                      ')
+            kwargs['add_mesh_ice_thick_args']['scalar_bar_args'].setdefault(
+                'n_labels', 0)
+            kwargs['add_mesh_ice_thick_args']['scalar_bar_args'].setdefault(
+                'color', 'white')
             kwargs['add_mesh_ice_thick_args']['scalar_bar_args'].setdefault(
                 'vertical', True)
             kwargs['add_mesh_ice_thick_args']['scalar_bar_args'].setdefault(
-                'fmt', '%.1f m')
-            kwargs['add_mesh_ice_thick_args']['scalar_bar_args'].setdefault(
-                'position_x', 0.03)
+                'position_x', 0.1)
             kwargs['add_mesh_ice_thick_args']['scalar_bar_args'].setdefault(
                 'position_y', 0.3)
             kwargs['add_mesh_ice_thick_args']['scalar_bar_args'].setdefault(
@@ -290,8 +304,33 @@ class Glacier3DViz:
             self.add_mesh_ice_thick_args_use = \
                 self.add_mesh_ice_thick_args_default
 
+        if 'add_ice_thick_lookuptable_args' in kwargs:
+            kwargs['add_ice_thick_lookuptable_args'].setdefault(
+                'cmap', get_custom_colormap('Blues'))
+            kwargs['add_ice_thick_lookuptable_args'].setdefault(
+                'n_labels', 5)
+            max_value, annotations = get_nice_thickness_colorbar_labels(
+                self.da_glacier_thick.max().item())
+            kwargs['add_ice_thick_lookuptable_args'].setdefault(
+                'scalar_range', [0.1, max_value])
+            kwargs['add_ice_thick_lookuptable_args'].setdefault(
+                'annotations', annotations)
+
+            if set_default:
+                self.add_ice_thick_lookuptable_args_default = \
+                    kwargs['add_ice_thick_lookuptable_args']
+                self.add_ice_thick_lookuptable_args_use = \
+                    self.add_ice_thick_lookuptable_args_default
+            else:
+                self.add_ice_thick_lookuptable_args_use = \
+                    kwargs['add_ice_thick_lookuptable_args']
+        else:
+            self.add_ice_thick_lookuptable_args_use = \
+                self.add_ice_thick_lookuptable_args_default
+
         if 'text_time_args' in kwargs:
             kwargs['text_time_args'].setdefault('text', 'year: {:.0f}')
+            kwargs['text_time_args'].setdefault('color', 'white')
             kwargs['text_time_args'].setdefault('position', 'upper_right')
             kwargs['text_time_args'].setdefault('font_size', 12)
             # name for overwriting when updating time
@@ -319,8 +358,7 @@ class Glacier3DViz:
             self.light_args_use = self.light_args_default
 
         if 'background_args' in kwargs:
-            kwargs['background_args'].setdefault('color', 'white')
-            kwargs['background_args'].setdefault('top', 'lightblue')
+            kwargs['background_args'].setdefault('color', 'black')
 
             if set_default:
                 self.background_args_default = kwargs['background_args']
@@ -372,7 +410,7 @@ class Glacier3DViz:
             **self.texture_args_use,
         )
 
-    def _init_plotter(self, inital_time_step=0, **kwargs):
+    def _init_plotter(self, initial_time_step=0, external_plotter=None, **kwargs):
         self.check_given_kwargs(**kwargs)
 
         self.topo_mesh = self.da_topo.pyvista.mesh(x=self.x, y=self.y)
@@ -383,15 +421,24 @@ class Glacier3DViz:
                                             self.da_glacier_thick,
                                             self.time,
                                             self.time_var_display,
-                                            initial_time_step=inital_time_step)
+                                            initial_time_step=initial_time_step)
 
-        pl = pv.Plotter(**self.plotter_args_use)
+        if external_plotter:
+            pl = external_plotter
+        else:
+            pl = pv.Plotter(**self.plotter_args_use)
 
         # add topography with texture (color)
         pl.add_mesh(self.topo_mesh, **self.add_mesh_topo_args_use)
 
-        # add glacier surface, colored by thickness
+        # add glacier surface, colored by thickness, using custom colorbar
+        custom_colorbar = pv.LookupTable(
+            **{key: value
+               for key, value in self.add_ice_thick_lookuptable_args_use.items()
+               if key != 'n_labels'}
+        )
         pl.add_mesh(glacier_algo, scalars='thickness',
+                    cmap=custom_colorbar,
                     **self.add_mesh_ice_thick_args_use)
 
         pl.add_text(
@@ -418,6 +465,17 @@ class Glacier3DViz:
             else:
                 setattr(pl.camera, key_cam, value_cam)
 
+        self.glacier_algo = glacier_algo
+        self.plotter = pl
+
+        return pl, glacier_algo
+
+    def init_plotter(self, initial_time_step=0, external_plotter=None,
+                     **kwargs):
+        pl, glacier_algo = self._init_plotter(
+            initial_time_step=initial_time_step,
+            external_plotter=external_plotter,
+            **kwargs)
         return pl, glacier_algo
 
     def _init_widgets(self, plotter, glacier_algo):
@@ -466,8 +524,8 @@ class Glacier3DViz:
         return main
 
     def show(self, **kwargs):
-        self.plotter, self.glacier_algo = self._init_plotter(**kwargs)
-        return self._init_widgets(self.plotter, self.glacier_algo)
+        plotter, glacier_algo = self._init_plotter(**kwargs)
+        return self._init_widgets(plotter, glacier_algo)
 
     def close(self):
         if self.widgets is not None:
@@ -476,24 +534,43 @@ class Glacier3DViz:
         if self.plotter is not None:
             self.plotter.close()
 
+    def update_glacier(self, step, camera_position_per_step=None):
+        self.glacier_algo.time_step = step
+        self.glacier_algo.update()
+        self.plotter.add_text(
+            self.text_time_args_use['text'].format(self.glacier_algo.time_display),
+            **{key: value
+               for key, value in self.text_time_args_use.items()
+               if key != 'text'}
+        )
+
+        if camera_position_per_step:
+            self.plotter.camera.position = camera_position_per_step[step]
+
+        self.plotter.update()
+
     def export_animation(self, filename="animation.mp4", framerate=10,
-                         quality=5, **kwargs):
+                         quality=5, moving_camera_start_and_end_point=None,
+                         **kwargs):
         plotter, glacier_algo = self._init_plotter(**kwargs)
+
+        if moving_camera_start_and_end_point:
+            camera_position_per_frame = get_camera_position_per_frame(
+                start_point=moving_camera_start_and_end_point[0],
+                end_point=moving_camera_start_and_end_point[1],
+                nr_frames=self.dataset[self.time].size,
+            )
+        else:
+            camera_position_per_frame = None
 
         plotter.open_movie(filename, framerate=framerate, quality=quality)
 
         plotter.show(auto_close=False, jupyter_backend="static")
 
         for step in range(self.dataset[self.time].size):
-            glacier_algo.time_step = step
-            glacier_algo.update()
-            plotter.add_text(
-                self.text_time_args_use['text'].format(glacier_algo.time_display),
-                **{key: value
-                   for key, value in self.text_time_args_use.items()
-                   if key != 'text'}
-            )
-            plotter.update()
+            self.update_glacier(
+                step,
+                camera_position_per_step=camera_position_per_frame)
             plotter.write_frame()
 
         plotter.close()
@@ -514,3 +591,5 @@ class Glacier3DViz:
             if kwargs_screenshot is None:
                 kwargs_screenshot = {}
             plotter.screenshot(filepath, **kwargs_screenshot)
+
+        plotter.close()
