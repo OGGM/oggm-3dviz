@@ -242,6 +242,8 @@ class Glacier3DViz:
             kwargs['add_mesh_topo_args']['scalar_bar_args'].setdefault(
                 'fmt', '%.0f m')
             kwargs['add_mesh_topo_args']['scalar_bar_args'].setdefault(
+                'color', 'white')
+            kwargs['add_mesh_topo_args']['scalar_bar_args'].setdefault(
                 'position_x', 0.9)
             kwargs['add_mesh_topo_args']['scalar_bar_args'].setdefault(
                 'position_y', 0.3)
