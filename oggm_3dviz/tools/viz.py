@@ -30,6 +30,7 @@ class Glacier3DViz:
         add_mesh_ice_thick_args: dict | None = None,
         add_ice_thick_lookuptable_args: dict | None = None,
         use_texture: bool = False,
+        show_topo_side_walls: bool = False,
         texture_args: dict | None = None,
         text_time_args: dict | None = None,
         light_args: dict | None = None,
@@ -79,6 +80,9 @@ class Glacier3DViz:
             colorbar labels of the ice thickness, see pyvista.LookupTable
         use_texture: bool
             if True, a background texture is applied on the topography
+        show_topo_side_walls: bool
+            if True, the edges of the topography are set to the minimum elevation
+            of the map, so that the map looks more like a solid.
         texture_args: dict | None
             additional arguments for the texture, see texture.get_topo_texture
         text_time_args: dict | None
@@ -122,6 +126,13 @@ class Glacier3DViz:
                     {self.time: 0})
             else:
                 self.da_topo = self.dataset[self.topo_bedrock]
+
+        if show_topo_side_walls:
+            min_elevation = np.min(self.da_topo)
+            self.da_topo[0, :] = min_elevation
+            self.da_topo[-1, :] = min_elevation
+            self.da_topo[:, 0] = min_elevation
+            self.da_topo[:, -1] = min_elevation
 
         # ignore ice thicknesses equal to 0
         self.da_glacier_thick = xr.where(
