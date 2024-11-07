@@ -59,11 +59,11 @@ class Glacier3DViz:
         time_var_display: str
             name of the time coordinate in the dataset to be displayed
         x_crop: float| int | None
-            number of grid points in x direction or crop factor between 0 and 1, if None the complete extend
-            is used. See utils.resize_ds
+            number of grid points in x direction or crop factor between 0 and 1,
+            if None the complete extend is used. See utils.resize_ds
         y_crop: float | int | None
-            number of grid points in y direction or crop factor between 0 and 1, if None the complete extend
-            is used. See utils.resize_ds
+            number of grid points in y direction or crop factor between 0 and 1,
+            if None the complete extend is used. See utils.resize_ds
         additional_annotations: None | list
             list of additional annotations to be added to the map, see
             oggm_3dviz.tools.map_annotations
@@ -310,7 +310,7 @@ class Glacier3DViz:
             kwargs['add_ice_thick_lookuptable_args'].setdefault(
                 'n_labels', 5)
             max_value, annotations = get_nice_thickness_colorbar_labels(
-                self.da_glacier_thick.max().item())
+                self.da_glacier_thick.max().load().item())
             kwargs['add_ice_thick_lookuptable_args'].setdefault(
                 'scalar_range', [0.1, max_value])
             kwargs['add_ice_thick_lookuptable_args'].setdefault(
@@ -332,6 +332,7 @@ class Glacier3DViz:
             kwargs['text_time_args'].setdefault('text', 'year: {:.0f}')
             kwargs['text_time_args'].setdefault('color', 'white')
             kwargs['text_time_args'].setdefault('position', 'upper_right')
+            kwargs['text_time_args'].setdefault('viewport', True)
             kwargs['text_time_args'].setdefault('font_size', 12)
             # name for overwriting when updating time
             kwargs['text_time_args'].setdefault('name', 'current_year')
@@ -441,12 +442,15 @@ class Glacier3DViz:
                     cmap=custom_colorbar,
                     **self.add_mesh_ice_thick_args_use)
 
-        pl.add_text(
+        text_actor_time = pl.add_text(
             self.text_time_args_use['text'].format(glacier_algo.time_display),
             **{key: value
                for key, value in self.text_time_args_use.items()
                if key != 'text'}
         )
+        # Center the text horizontally and vertically
+        text_actor_time.GetTextProperty().SetJustificationToCentered()
+        text_actor_time.GetTextProperty().SetVerticalJustificationToCentered()
 
         # here we add potential additional features
         if self.additional_annotations_use is not None:
