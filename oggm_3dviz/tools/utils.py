@@ -184,6 +184,7 @@ def side_by_side_visualization(
         kwargs_screenshot: dict | None = None,
         framerate: int = 10,
         quality: int = 5,
+        moving_camera_start_and_end_point: list | None = None,
 ):
     """
     Function for creating side by side animation and/or plots. It is assumed
@@ -253,6 +254,15 @@ def side_by_side_visualization(
     window_size_x = kwargs_plotter['window_size'][0] * shape[1]
     window_size_y = kwargs_plotter['window_size'][1] * shape[0]
 
+    if moving_camera_start_and_end_point:
+        camera_position_per_frame = get_camera_position_per_frame(
+            start_point=moving_camera_start_and_end_point[0],
+            end_point=moving_camera_start_and_end_point[1],
+            nr_frames=viz_objects[0].dataset[viz_objects[0].time].size,
+        )
+    else:
+        camera_position_per_frame = None
+
     def init_side_by_side_plotter(initial_time_step=0):
         # initialize main plotter
         plotter = pv.Plotter(window_size=[window_size_x, window_size_y],
@@ -289,7 +299,9 @@ def side_by_side_visualization(
         for step in range(viz_objects[0].dataset[viz_objects[0].time].size):
             for viz_obj, (i, j) in zip(viz_objects, subplots_ij):
                 plotter.subplot(i, j)
-                viz_obj.update_glacier(step)
+                viz_obj.update_glacier(
+                    step,
+                    camera_position_per_step=camera_position_per_frame)
 
             plotter.write_frame()
         plotter.close()
