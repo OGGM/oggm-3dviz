@@ -500,12 +500,15 @@ class Glacier3DViz:
         def update_glacier(change):
             glacier_algo.time_step = change["new"]
             glacier_algo.update()
-            plotter.add_text(
+            text_actor_time = plotter.add_text(
                 self.text_time_args_use['text'].format(glacier_algo.time_display),
                 **{key: value
                    for key, value in self.text_time_args_use.items()
                    if key != 'text'}
             )
+            # Center the text horizontally and vertically
+            text_actor_time.GetTextProperty().SetJustificationToCentered()
+            text_actor_time.GetTextProperty().SetVerticalJustificationToCentered()
 
             plotter.update()
 
@@ -541,12 +544,15 @@ class Glacier3DViz:
     def update_glacier(self, step, camera_position_per_step=None):
         self.glacier_algo.time_step = step
         self.glacier_algo.update()
-        self.plotter.add_text(
+        text_actor_time = self.plotter.add_text(
             self.text_time_args_use['text'].format(self.glacier_algo.time_display),
             **{key: value
                for key, value in self.text_time_args_use.items()
                if key != 'text'}
         )
+        # Center the text horizontally and vertically
+        text_actor_time.GetTextProperty().SetJustificationToCentered()
+        text_actor_time.GetTextProperty().SetVerticalJustificationToCentered()
 
         if camera_position_per_step:
             self.plotter.camera.position = camera_position_per_step[step]
