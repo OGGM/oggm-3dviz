@@ -304,6 +304,7 @@ def side_by_side_visualization(
             time_index = 0
 
         plotter = init_side_by_side_plotter(initial_time_step=time_index)
+        plotter.show(auto_close=False, jupyter_backend="static")
         if kwargs_screenshot is None:
             kwargs_screenshot = {}
         plotter.screenshot(filename_plot, **kwargs_screenshot)
