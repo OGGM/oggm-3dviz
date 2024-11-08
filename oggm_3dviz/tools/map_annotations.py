@@ -185,8 +185,8 @@ class ArrowAnnotation(MapAnnotation):
             glacier_3dviz.dataset[glacier_3dviz.x].min().item(),
             glacier_3dviz.dataset[glacier_3dviz.y].max().item() -
             glacier_3dviz.dataset[glacier_3dviz.y].min().item(),
-            glacier_3dviz.dataset[glacier_3dviz.topo_bedrock].max().item() -
-            glacier_3dviz.dataset[glacier_3dviz.topo_bedrock].min().item()
+            glacier_3dviz.dataset[glacier_3dviz.topo_bedrock].max().load().item() -
+            glacier_3dviz.dataset[glacier_3dviz.topo_bedrock].min().load().item()
         ])
         self.absolute_text_offset = absolute_text_offset
 
