@@ -4,6 +4,7 @@ channels:
 dependencies:
   - contextily
   - ffmpeg
+  - cartopy
   - imageio=2.27.0
   - ipywidgets
   - jupyterlab
