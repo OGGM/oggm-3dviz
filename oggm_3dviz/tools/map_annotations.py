@@ -318,6 +318,8 @@ class TextAnnotation(MapAnnotation):
             self,
             text: str = '',
             position: str | list = 'upper_left',
+            viewport: bool = True,
+            color: str | list = 'white',
             **kwargs):
         """
         Add a text annotation to the map
@@ -328,6 +330,12 @@ class TextAnnotation(MapAnnotation):
             text to display
         position: str | list
             Position to place the bottom left corner of the text box
+        viewport: bool
+            If True and position is a tuple of float, uses the normalized
+            viewport coordinate system (values between 0.0 and 1.0). Default is
+            True.
+        color: str | list
+            Either a string, RGB list, or hex color string. Default is white.
         kwargs: dict
             additional keyword arguments for pv.Plotter.add_text
         """
@@ -335,6 +343,8 @@ class TextAnnotation(MapAnnotation):
 
         self.text = text
         self.position = position
+        self.viewport = viewport
+        self.color = color
         self.kwargs = kwargs
 
     def add_annotation(self,
@@ -342,6 +352,8 @@ class TextAnnotation(MapAnnotation):
                        plotter: pv.Plotter,
                        ):
         plotter.add_text(
-            self.text,
-            self.position,
+            text=self.text,
+            position=self.position,
+            viewport=self.viewport,
+            color=self.color,
             **self.kwargs)
