@@ -411,6 +411,17 @@ class Glacier3DViz:
             **self.texture_args_use,
         )
 
+    def _add_time_text(self, plotter, glacier_algo):
+        text_actor_time = plotter.add_text(
+            self.text_time_args_use['text'].format(glacier_algo.time_display),
+            **{key: value
+               for key, value in self.text_time_args_use.items()
+               if key != 'text'}
+        )
+        # Center the text horizontally and vertically
+        text_actor_time.GetTextProperty().SetJustificationToCentered()
+        text_actor_time.GetTextProperty().SetVerticalJustificationToCentered()
+
     def _init_plotter(self, initial_time_step=0, external_plotter=None, **kwargs):
         self.check_given_kwargs(**kwargs)
 
@@ -442,15 +453,8 @@ class Glacier3DViz:
                     cmap=custom_colorbar,
                     **self.add_mesh_ice_thick_args_use)
 
-        text_actor_time = pl.add_text(
-            self.text_time_args_use['text'].format(glacier_algo.time_display),
-            **{key: value
-               for key, value in self.text_time_args_use.items()
-               if key != 'text'}
-        )
-        # Center the text horizontally and vertically
-        text_actor_time.GetTextProperty().SetJustificationToCentered()
-        text_actor_time.GetTextProperty().SetVerticalJustificationToCentered()
+        # add text showing the current time
+        self._add_time_text(pl, glacier_algo)
 
         # here we add potential additional features
         if self.additional_annotations_use is not None:
@@ -500,15 +504,8 @@ class Glacier3DViz:
         def update_glacier(change):
             glacier_algo.time_step = change["new"]
             glacier_algo.update()
-            text_actor_time = plotter.add_text(
-                self.text_time_args_use['text'].format(glacier_algo.time_display),
-                **{key: value
-                   for key, value in self.text_time_args_use.items()
-                   if key != 'text'}
-            )
-            # Center the text horizontally and vertically
-            text_actor_time.GetTextProperty().SetJustificationToCentered()
-            text_actor_time.GetTextProperty().SetVerticalJustificationToCentered()
+            # add text showing the current time
+            self._add_time_text(plotter, glacier_algo)
 
             plotter.update()
 
@@ -544,15 +541,9 @@ class Glacier3DViz:
     def update_glacier(self, step, camera_position_per_step=None):
         self.glacier_algo.time_step = step
         self.glacier_algo.update()
-        text_actor_time = self.plotter.add_text(
-            self.text_time_args_use['text'].format(self.glacier_algo.time_display),
-            **{key: value
-               for key, value in self.text_time_args_use.items()
-               if key != 'text'}
-        )
-        # Center the text horizontally and vertically
-        text_actor_time.GetTextProperty().SetJustificationToCentered()
-        text_actor_time.GetTextProperty().SetVerticalJustificationToCentered()
+
+        # add text showing the current time
+        self._add_time_text(self.plotter, self.glacier_algo)
 
         if camera_position_per_step:
             self.plotter.camera.position = camera_position_per_step[step]
