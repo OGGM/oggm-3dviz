@@ -66,7 +66,7 @@ class Glacier3DViz:
             if None the complete extend is used. See utils.resize_ds
         additional_annotations: None | list
             list of additional annotations to be added to the map, see
-            oggm_3dviz.tools.map_annotations
+            glacier3dviz.tools.map_annotations
         plotter_args: dict | None
             additional arguments for the pyvista plotter, see pyvista.Plotter
         add_mesh_topo_args: dict | None
