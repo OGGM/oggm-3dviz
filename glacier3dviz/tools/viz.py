@@ -119,7 +119,7 @@ class Glacier3DViz:
             raise NotImplementedError('Time update of bedrock not supported'
                                       'yet!')
         else:
-            if len(self.dataset[self.topo_bedrock].coords) == 3:
+            if len(self.dataset[self.topo_bedrock].dims) == 3:
                 # ok the given topography has a time coordinate, just take the
                 # first
                 self.da_topo = self.dataset[self.topo_bedrock].isel(
