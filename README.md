@@ -1,8 +1,20 @@
-# OGGM:3D-Viz
+# Glacier:3D-Viz
 
-<img src="https://oggm.org/img/logos/oggm_l_alpha.png" alt="OGGM logo" width="180"/> <img src="https://docs.pyvista.org/version/stable/_static/pyvista_logo_sm.png" alt="PyVista logo" width="200"/> 
+<div style="display: flex; justify-content: space-between;">
+  <video autoplay muted loop controls width="48%">
+    <source src="_static/aletsch_oggm.mp4" type="video/mp4">
+    Your browser does not support the video tag.
+  </video>
+  <video autoplay muted loop controls width="48%">
+    <source src="_static/karakoram_oggm.mp4" type="video/mp4">
+    Your browser does not support the video tag.
+  </video>
+</div>
 
+The Glacier:3D-Viz tool helps you make 3D visualizations of changing glaciers. It is mainly build around the great [PyVista](https://github.com/pyvista/pyvista) package.
 
-The OGGM:3D-Viz tool helps you make 3D visualizations of changing glaciers. It is mainly build around the great [PyVista](https://github.com/pyvista/pyvista) package and designed for working with [OGGM](https://github.com/OGGM/oggm) output data. But you can also use it for showing any glacier data, no matter how you got it.
+<img src="https://docs.pyvista.org/version/stable/_static/pyvista_logo_sm.png" alt="PyVista logo" width="200"/>
 
-To begin and learn how to use OGGM:3D-Viz, take a look at the tutorials. They'll get you started and teach you how to use the tool.
+It was initially designed for working with [OGGM](https://github.com/OGGM/oggm) output data. But you can use it for showing any glacier data, no matter how you got it.
+
+To begin and learn how to use Glacier:3D-Viz, take a look at the tutorials. They'll get you started and teach you how to use the tool.
