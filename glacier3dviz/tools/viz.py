@@ -28,7 +28,7 @@ class Glacier3DViz:
         plotter_args: dict | None = None,
         add_mesh_topo_args: dict | None = None,
         add_mesh_ice_thick_args: dict | None = None,
-        add_ice_thick_lookuptable_args: dict | None = None,
+        ice_thick_lookuptable_args: dict | None = None,
         use_texture: bool = False,
         show_topo_side_walls: bool = False,
         texture_args: dict | None = None,
@@ -75,7 +75,7 @@ class Glacier3DViz:
         add_mesh_ice_thick_args: dict | None
             additional arguments for the mesh when adding ice_thickness to the
             plotter, see pyvista.Plotter.add_mesh
-        add_ice_thick_lookuptable_args: dict | None
+        ice_thick_lookuptable_args: dict | None
             additional arguments for the lookuptable when customizing the
             colorbar labels of the ice thickness, see pyvista.LookupTable
         use_texture: bool
@@ -159,11 +159,11 @@ class Glacier3DViz:
         self.add_mesh_ice_thick_args_default = {}
         self.add_mesh_ice_thick_args_use = None
 
-        # add some default args for add_ice_thick_lookuptable_args
-        if add_ice_thick_lookuptable_args is None:
-            add_ice_thick_lookuptable_args = {}
-        self.add_ice_thick_lookuptable_args_default = {}
-        self.add_ice_thick_lookuptable_args_use = None
+        # add some default args for ice_thick_lookuptable_args
+        if ice_thick_lookuptable_args is None:
+            ice_thick_lookuptable_args = {}
+        self.ice_thick_lookuptable_args_default = {}
+        self.ice_thick_lookuptable_args_use = None
 
         # add some default args for the time text
         if text_time_args is None:
@@ -200,7 +200,7 @@ class Glacier3DViz:
             plotter_args=plotter_args,
             add_mesh_topo_args=add_mesh_topo_args,
             add_mesh_ice_thick_args=add_mesh_ice_thick_args,
-            add_ice_thick_lookuptable_args=add_ice_thick_lookuptable_args,
+            ice_thick_lookuptable_args=ice_thick_lookuptable_args,
             text_time_args=text_time_args,
             light_args=light_args,
             background_args=background_args,
@@ -304,29 +304,29 @@ class Glacier3DViz:
             self.add_mesh_ice_thick_args_use = \
                 self.add_mesh_ice_thick_args_default
 
-        if 'add_ice_thick_lookuptable_args' in kwargs:
-            kwargs['add_ice_thick_lookuptable_args'].setdefault(
+        if 'ice_thick_lookuptable_args' in kwargs:
+            kwargs['ice_thick_lookuptable_args'].setdefault(
                 'cmap', get_custom_colormap('Blues'))
-            kwargs['add_ice_thick_lookuptable_args'].setdefault(
+            kwargs['ice_thick_lookuptable_args'].setdefault(
                 'n_labels', 5)
             max_value, annotations = get_nice_thickness_colorbar_labels(
                 self.da_glacier_thick.max().load().item())
-            kwargs['add_ice_thick_lookuptable_args'].setdefault(
+            kwargs['ice_thick_lookuptable_args'].setdefault(
                 'scalar_range', [0.1, max_value])
-            kwargs['add_ice_thick_lookuptable_args'].setdefault(
+            kwargs['ice_thick_lookuptable_args'].setdefault(
                 'annotations', annotations)
 
             if set_default:
-                self.add_ice_thick_lookuptable_args_default = \
-                    kwargs['add_ice_thick_lookuptable_args']
-                self.add_ice_thick_lookuptable_args_use = \
-                    self.add_ice_thick_lookuptable_args_default
+                self.ice_thick_lookuptable_args_default = \
+                    kwargs['ice_thick_lookuptable_args']
+                self.ice_thick_lookuptable_args_use = \
+                    self.ice_thick_lookuptable_args_default
             else:
-                self.add_ice_thick_lookuptable_args_use = \
-                    kwargs['add_ice_thick_lookuptable_args']
+                self.ice_thick_lookuptable_args_use = \
+                    kwargs['ice_thick_lookuptable_args']
         else:
-            self.add_ice_thick_lookuptable_args_use = \
-                self.add_ice_thick_lookuptable_args_default
+            self.ice_thick_lookuptable_args_use = \
+                self.ice_thick_lookuptable_args_default
 
         if 'text_time_args' in kwargs:
             kwargs['text_time_args'].setdefault('text', 'year: {:.0f}')
@@ -446,7 +446,7 @@ class Glacier3DViz:
         # add glacier surface, colored by thickness, using custom colorbar
         custom_colorbar = pv.LookupTable(
             **{key: value
-               for key, value in self.add_ice_thick_lookuptable_args_use.items()
+               for key, value in self.ice_thick_lookuptable_args_use.items()
                if key != 'n_labels'}
         )
         pl.add_mesh(glacier_algo, scalars='thickness',
@@ -531,6 +531,12 @@ class Glacier3DViz:
         plotter, glacier_algo = self._init_plotter(**kwargs)
         return self._init_widgets(plotter, glacier_algo)
 
+    def get_camera_position(self):
+        if self.plotter:
+            return self.plotter.camera.position
+        else:
+            print('No plotter active to show a position! First call .show()!')
+
     def close(self):
         if self.widgets is not None:
             for w in self.widgets.values():
@@ -582,7 +588,7 @@ class Glacier3DViz:
         time_diff = np.abs(self.dataset[self.time].values - time_given)
         time_index = np.argmin(time_diff)
 
-        plotter, glacier_algo = self._init_plotter(inital_time_step=time_index,
+        plotter, glacier_algo = self._init_plotter(initial_time_step=time_index,
                                                    **kwargs)
 
         if show_plot:

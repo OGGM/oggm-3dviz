@@ -2,7 +2,7 @@ from pyproj import Proj
 import numpy as np
 import pyvista as pv
 
-from . import viz
+from . import viz, get_topo_texture
 from .utils import check_color
 
 
@@ -51,6 +51,7 @@ class PointAnnotation(MapAnnotation):
         self.kwargs = kwargs
         # set some defaults for add_point_labels kwargs
         self.kwargs.setdefault('font_size', 25)
+        self.kwargs.setdefault('text_color', 'white')
         self.kwargs.setdefault('point_color', 'black')
         self.kwargs.setdefault('point_size', 10)
         self.kwargs.setdefault('shape', None)
@@ -146,7 +147,7 @@ class ArrowAnnotation(MapAnnotation):
         if arrow_kwargs is None:
             arrow_kwargs = {}
         arrow_kwargs.setdefault('show_scalar_bar', False)
-        arrow_kwargs.setdefault('color', [0.2, 0.2, 0.2])
+        arrow_kwargs.setdefault('color', [1., 1., 1.])
         self.arrow_kwargs = arrow_kwargs
 
         # set some default kwargs for the text
@@ -155,6 +156,7 @@ class ArrowAnnotation(MapAnnotation):
         text_kwargs.setdefault('shape', None)
         text_kwargs.setdefault('show_points', False)
         text_kwargs.setdefault('font_size', 30)
+        text_kwargs.setdefault('text_color', 'white')
         text_kwargs.setdefault('always_visible', True)
         self.text_kwargs = text_kwargs
 

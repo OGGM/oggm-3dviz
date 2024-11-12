@@ -1,4 +1,4 @@
-name: oggm-3dviz
+name: glacier3dviz
 channels:
   - conda-forge
 dependencies:
