@@ -3,6 +3,7 @@ import ipywidgets as widgets
 import numpy as np
 import xarray as xr
 import pyvista as pv
+import os
 
 from .pyvista_xarray_ext import PyVistaGlacierSource
 from .texture import get_topo_texture
@@ -529,7 +530,13 @@ class Glacier3DViz:
 
     def show(self, **kwargs):
         plotter, glacier_algo = self._init_plotter(**kwargs)
-        return self._init_widgets(plotter, glacier_algo)
+
+        # current workaround to show in jupyterbook
+        if os.getenv("JUPYTER_BOOK_BUILD") == "true":
+            plotter.window_size = [750, 600]
+            return plotter.show(jupyter_backend='html')
+        else:
+            return self._init_widgets(plotter, glacier_algo)
 
     def get_camera_position(self):
         if self.plotter:

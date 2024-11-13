@@ -1,0 +1,10 @@
+# Table of contents
+# Learn more at https://jupyterbook.org/customize/toc.html
+format: jb-book
+root: tutorials/welcome
+chapters:
+- file: tutorials/getting_started
+- file: tutorials/general_styling
+- file: tutorials/annotations
+- file: tutorials/advanced_visualizations
+  
