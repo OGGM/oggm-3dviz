@@ -1,20 +1,12 @@
 # Glacier:3D-Viz
 
-<iframe src="https://player.vimeo.com/video/1024338665?autoplay=1&loop=1&muted=1" 
-        width="640" 
-        height="360" 
-        frameborder="0" 
-        allow="autoplay; fullscreen; picture-in-picture" 
-        allowfullscreen>
-</iframe>
-
 <div style="display: flex; justify-content: space-between;">
   <video autoplay muted loop controls width="48%">
-    <source src="_static/aletsch_oggm.mp4" type="video/mp4">
+    <source src="https://raw.githubusercontent.com/OGGM/glacier3dviz/main/_static/aletsch_oggm.mp4" type="video/mp4">
     Your browser does not support the video tag.
   </video>
   <video autoplay muted loop controls width="48%">
-    <source src="_static/karakoram_oggm.mp4" type="video/mp4">
+    <source src="https://raw.githubusercontent.com/OGGM/glacier3dviz/main/_static/karakoram_oggm.mp4" type="video/mp4">
     Your browser does not support the video tag.
   </video>
 </div>
