@@ -18,6 +18,9 @@ launch_buttons:
   binderhub_url: "https://mybinder.org"
   jupyterhub_url: ""
 html:
+  analytics:
+    plausible_analytics_domain: glacier3dviz.oggm.org
+    plausible_analytics_url: https://plausible.oggm.org/js/script.js
   use_repository_button: true
   use_issues_button: true
   use_edit_page_button: false
@@ -32,8 +35,6 @@ sphinx:
     html_show_copyright: false
     html_last_updated_fmt: '%b %d, %Y'
     nb_merge_streams: true
-    html_js_files:
-    - ['https://plausible.oggm.org/js/script.js', {'defer': 'defer', 'data-domain': 'glacier3dviz.oggm.org'}]
 execute:
   execute_notebooks: auto  # off (for tests)
   timeout: -1
