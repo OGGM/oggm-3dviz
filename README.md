@@ -1,7 +1,7 @@
 # Glacier:3D-Viz
 
-[![Watch an example for Aletsch on Vimeo](https://player.vimeo.com/video/1024346444?autoplay=1&loop=1&muted=1)]
-[![Watch an example for the main glaciers of Karakoram on Vimeo](https://player.vimeo.com/video/1024338665?autoplay=1&loop=1&muted=1)]
+[![Watch an example for Aletsch on Vimeo](https://vimeo.com/1024346444)]
+[![Watch an example for the main glaciers of Karakoram on Vimeo](https://vimeo.com/1024338665)]
 
 The Glacier:3D-Viz tool helps you make 3D visualizations of changing glaciers. It is mainly build around the great [PyVista](https://github.com/pyvista/pyvista) package.
 
