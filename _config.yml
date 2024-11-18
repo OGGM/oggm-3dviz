@@ -10,12 +10,12 @@ author: Glacier:3D-Viz Contributors  # The author of the book
 copyright: "2024"  # Copyright year to be placed in the footer
 logo: ""  # A path to the book logo
 repository:
-  url: https://github.com/OGGM/oggm-3dviz
+  url: https://github.com/OGGM/glacier3dviz
   path_to_book: . 
   branch: main
 launch_buttons:
   notebook_interface: "jupyterlab"
-  binderhub_url: "https://mybinder.org"
+  binderhub_url: ""
   jupyterhub_url: ""
 html:
   analytics:
@@ -43,4 +43,4 @@ exclude_patterns: [.virtual_documents/*,README.md,sandbox/*,ignore/*,ioggm*]
 jupyter:
   cell_metadata_filter:
     include:
-      - hide-input
+      - remove-input
