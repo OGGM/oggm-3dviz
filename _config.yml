@@ -1,0 +1,46 @@
+#######################################################################################
+# A default configuration that will be loaded for all jupyter books
+# See the documentation for help and more options: 
+# https://jupyterbook.org/customize/config.html
+
+#######################################################################################
+# Book settings
+title: Glacier:3D-Viz  # The title of the book. Will be placed in the left navbar.
+author: Glacier:3D-Viz Contributors  # The author of the book
+copyright: "2024"  # Copyright year to be placed in the footer
+logo: ""  # A path to the book logo
+repository:
+  url: https://github.com/OGGM/glacier3dviz
+  path_to_book: . 
+  branch: main
+launch_buttons:
+  notebook_interface: "jupyterlab"
+  binderhub_url: ""
+  jupyterhub_url: ""
+html:
+  analytics:
+    plausible_analytics_domain: glacier3dviz.oggm.org
+    plausible_analytics_url: https://plausible.oggm.org/js/script.js
+  use_repository_button: true
+  use_issues_button: true
+  use_edit_page_button: false
+  extra_footer: |
+    <p>
+    These notebooks are licensed under a <a href="https://github.com/OGGM/glacier3dviz/blob/main/LICENSE" target="_blank">BSD-3-Clause license</a>.
+    <br>
+    &copy; Copyright 2023-2024.
+    </p>
+sphinx:
+  config:
+    html_show_copyright: false
+    html_last_updated_fmt: '%b %d, %Y'
+    nb_merge_streams: true
+execute:
+  execute_notebooks: auto  # off (for tests)
+  timeout: -1
+  allow_errors: true
+exclude_patterns: [.virtual_documents/*,README.md,sandbox/*,ignore/*,ioggm*]
+jupyter:
+  cell_metadata_filter:
+    include:
+      - remove-input

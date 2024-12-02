@@ -1,12 +1,14 @@
-name: oggm-3dviz
+name: glacier3dviz
 channels:
   - conda-forge
 dependencies:
   - contextily
   - ffmpeg
+  - cartopy
   - imageio=2.27.0
   - ipywidgets
   - jupyterlab
+  - jupyter-book
   - netcdf4
   - python>=3.10
   - pyvista
