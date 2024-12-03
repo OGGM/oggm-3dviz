@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 import pyvista as pv
 import vtk
-import math
 
 
 def resize_ds(
@@ -324,3 +323,10 @@ def side_by_side_visualization(
         plotter.close()
 
 
+def get_camera_position_per_frame(start_point, end_point, nr_frames):
+
+    x_values = np.linspace(start_point[0], end_point[0], nr_frames)
+    y_values = np.linspace(start_point[1], end_point[1], nr_frames)
+    z_values = np.linspace(start_point[2], end_point[2], nr_frames)
+
+    return list(zip(x_values, y_values, z_values))
