@@ -45,8 +45,11 @@ def get_camera_position_per_frame(viz_object, camera_trajectory, nr_frames,
             z_normalized=np.array(z_normalized)
         )
 
-    else:
-        start_point = kwargs_camera_trajectory['camera_point']
+    elif camera_trajectory is None:
+        start_point = viz_object.get_camera_position()
+        x_values = [start_point[0]] * nr_frames
+        y_values = [start_point[1]] * nr_frames
+        z_values = [start_point[2]] * nr_frames
 
 
     # Combine the x, y, and z values into a list of tuples representing each frame's position

@@ -537,9 +537,16 @@ class Glacier3DViz:
         else:
             return self._init_widgets(plotter, glacier_algo)
 
-    def get_camera_position(self):
+    def get_camera_position(self, normalized=False):
         if self.plotter:
-            return self.plotter.camera.position
+            camera_position = self.plotter.camera.position
+
+            if normalized:
+                camera_position = self.get_normalized(camera_position[0],
+                                                      camera_position[1],
+                                                      camera_position[2])
+
+            return camera_position
         else:
             print('No plotter active to show a position! First call .show()!')
 
@@ -657,47 +664,102 @@ class Glacier3DViz:
 
         Parameters:
         - x_normalized: float or array-like
-            Normalized x-coordinates in the range [-1, 1], where -1 corresponds to one edge
-            of the domain and 1 corresponds to the opposite edge.
+            Normalized x-coordinates in the range [-1, 1], where -1 corresponds to
+            one edge of the domain and 1 corresponds to the opposite edge.
         - y_normalized: float or array-like
-            Normalized y-coordinates in the range [-1, 1], where -1 corresponds to one edge
-            of the domain and 1 corresponds to the opposite edge.
+            Normalized y-coordinates in the range [-1, 1], where -1 corresponds to
+            one edge of the domain and 1 corresponds to the opposite edge.
         - z_normalized: float or array-like,
-            Normalized z-coordinates (elevation) in the range [-1, 1], where -1 corresponds
-            to the minimum elevation and 1 to the maximum.
+            Normalized z-coordinates (elevation) in the range [-1, 1], where -1
+            corresponds to the minimum elevation and 1 to the maximum.
 
         Returns:
         - tuple of numpy arrays
             The absolute coordinates (x, y, z) in the same units as the dataset.
-
         """
         # Extract coordinate arrays from the dataset
         x_coordinates = self.dataset[self.x].data
         y_coordinates = self.dataset[self.y].data
         z_coordinates = self.dataset[self.topo_bedrock].data
 
-        # Compute the range of x and y coordinates (absolute difference between max and min)
+        # Compute the range of x and y coordinates
+        # (absolute difference between max and min)
         x_range = abs(x_coordinates[-1] - x_coordinates[0])
         y_range = abs(y_coordinates[-1] - y_coordinates[0])
 
-        # Compute the range of z coordinates (difference between max and min elevation)
+        # Compute the range of z coordinates
+        # (difference between max and min elevation)
         z_range = np.max(z_coordinates) - np.min(z_coordinates)
 
-        # Use the maximum of x_range and y_range to ensure scaling consistency for x and y
+        # Use the maximum of x_range and y_range to ensure scaling consistency
+        # for x and y
         max_range = max(x_range, y_range)
 
         # Convert normalized x values to absolute coordinates
         x_values = x_normalized * max_range
-        x_values += np.mean(
-            x_coordinates)  # Center the values around the mean of x_coordinates
+        x_values += np.mean(x_coordinates)
 
         # Convert normalized y values to absolute coordinates
         y_values = y_normalized * max_range
-        y_values += np.mean(
-            y_coordinates)  # Center the values around the mean of y_coordinates
+        y_values += np.mean(y_coordinates)
 
         # Convert normalized z values to absolute coordinates
         z_values = z_normalized * z_range
-
+        z_values += np.min(z_coordinates)
         # Return the absolute coordinates
+        return x_values, y_values, z_values
+
+    def get_normalized(self, x_absolute, y_absolute, z_absolute):
+        """
+        Converts absolute geographic coordinates to normalized coordinates.
+
+        Parameters:
+        - x_absolute: float or array-like
+            Absolute x-coordinates in the units of the dataset.
+        - y_absolute: float or array-like
+            Absolute y-coordinates in the units of the dataset.
+        - z_absolute: float or array-like
+            Absolute z-coordinates (elevation) in the units of the dataset.
+
+        Returns:
+        - tuple of numpy arrays
+            The normalized coordinates (x, y, z) in the range:
+            - x, y: Centered around 0, scaled by the maximum horizontal range of
+            the domain, [-1, 1].
+            - z: Normalized to the vertical extent of the topography, where 0
+            corresponds to the minimum and 1 to the maximum.
+        """
+
+        # Extract coordinate arrays from the dataset for x, y, and z
+        x_coordinates = self.dataset[self.x].data
+        y_coordinates = self.dataset[self.y].data
+        z_coordinates = self.dataset[self.topo_bedrock].data
+
+        # Calculate the range of x and y coordinates
+        # (extent of the domain in these dimensions)
+        x_range = abs(x_coordinates[-1] - x_coordinates[0])
+        y_range = abs(y_coordinates[-1] - y_coordinates[0])
+
+        # Calculate the range of z coordinates (vertical extent of the topography)
+        z_range = np.max(z_coordinates) - np.min(z_coordinates)
+
+        # Determine the maximum range between x and y to ensure consistent scaling
+        max_range = max(x_range, y_range)
+
+        # Normalize the x coordinate: subtract the mean and divide by the
+        # maximum range
+        x_absolute -= np.mean(x_coordinates)
+        x_values = x_absolute / max_range
+
+        # Normalize the y coordinate: subtract the mean and divide by the
+        # maximum range
+        y_absolute -= np.mean(y_coordinates)
+        y_values = y_absolute / max_range
+
+        # Normalize the z coordinate: subtract the minimum and divide by the
+        # vertical range
+        z_absolute -= np.min(z_coordinates)
+        z_values = z_absolute / z_range
+
+        # Return the normalized coordinates as x, y, z values
         return x_values, y_values, z_values
