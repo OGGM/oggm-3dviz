@@ -537,14 +537,15 @@ class Glacier3DViz:
         else:
             return self._init_widgets(plotter, glacier_algo)
 
-    def get_camera_position(self, normalized=True):
+    def get_camera_position(self, normalized=True, reference_axis=None):
         if self.plotter:
             camera_position = self.plotter.camera.position
 
             if normalized:
                 camera_position = self.get_normalized(camera_position[0],
                                                       camera_position[1],
-                                                      camera_position[2])
+                                                      camera_position[2],
+                                                      reference_axis)
 
             return camera_position
         else:
@@ -676,7 +677,8 @@ class Glacier3DViz:
 
         plotter.close()
 
-    def get_absolute_coordinates(self, x_normalized, y_normalized, z_normalized):
+    def get_absolute_coordinates(self, x_normalized, y_normalized, z_normalized,
+                                 reference_axis=None):
         """
         Converts normalized coordinates to absolute geographic coordinates.
 
@@ -690,6 +692,10 @@ class Glacier3DViz:
         - z_normalized: float or array-like,
             Normalized z-coordinates (elevation) in the range [-1, 1], where -1
             corresponds to the minimum elevation and 1 to the maximum.
+        - reference_axis: str, optional
+            Can be one of the following: 'x-axis' or 'y-axis'.
+            Defines the axis along which the coordinates are normalized. For a
+            quadratic coordinate system.
 
         Returns:
         - tuple of numpy arrays
@@ -701,15 +707,25 @@ class Glacier3DViz:
         z_coordinates = self.dataset[self.topo_bedrock].data
 
         # actual function for getting absolute values
-        def denormalize(minimum, maximum, normalized):
-            return (normalized + 1) * (maximum - minimum) / 2 + minimum
+        def denormalize(minimum, range, normalized):
+            return (normalized + 1) * range / 2 + minimum
 
-        x_values = denormalize(np.min(x_coordinates),
-                               np.max(x_coordinates),
-                               x_normalized)
-        y_values = denormalize(np.min(y_coordinates),
-                               np.max(y_coordinates),
-                               y_normalized)
+        # Normalize values based on the reference axis logic
+        min_x = np.min(x_coordinates)
+        min_y = np.min(y_coordinates)
+        range_x = np.max(x_coordinates) - min_x
+        range_y = np.max(y_coordinates) - min_y
+        if reference_axis=='x-axis':
+            x_values = denormalize(min_x, range_x, x_normalized)
+            y_values = denormalize(min_y, range_x, y_normalized)
+
+        elif reference_axis=='y-axis':
+            x_values = denormalize(min_x, range_y, x_normalized)
+            y_values = denormalize(min_y, range_y, y_normalized)
+        else:
+            x_values = denormalize(min_x, range_x, x_normalized)
+            y_values = denormalize(min_y, range_y, y_normalized)
+
         z_values = denormalize(np.min(z_coordinates),
                                np.max(z_coordinates),
                                z_normalized)
@@ -717,7 +733,7 @@ class Glacier3DViz:
         # Return the absolute coordinates
         return x_values, y_values, z_values
 
-    def get_normalized(self, x_absolute, y_absolute, z_absolute):
+    def get_normalized(self, x_absolute, y_absolute, z_absolute, reference_axis=None):
         """
         Converts absolute geographic coordinates to normalized coordinates.
 
@@ -728,6 +744,10 @@ class Glacier3DViz:
             Absolute y-coordinates in the units of the dataset.
         - z_absolute: float or array-like
             Absolute z-coordinates (elevation) in the units of the dataset.
+       - reference_axis: str, optional
+            Can be one of the following: 'x-axis' or 'y-axis'.
+            Defines the axis along which the coordinates are normalized. For a
+            quadratic coordinate system.
 
         Returns:
         - tuple of numpy arrays
@@ -744,17 +764,29 @@ class Glacier3DViz:
         z_coordinates = self.dataset[self.topo_bedrock].data
 
         # actual function for normalizing
-        def normalize(minimum, maximum, absolute):
-            return 2 * (absolute - minimum) / (maximum - minimum) - 1
+        def normalize(minimum, range_value, absolute):
+            return 2 * (absolute - minimum) / range_value - 1
 
-        x_values = normalize(np.min(x_coordinates),
-                             np.max(x_coordinates),
-                             x_absolute)
-        y_values = normalize(np.min(y_coordinates),
-                             np.max(y_coordinates),
-                             y_absolute)
+        # Normalize values based on the reference axis logic
+        min_x = np.min(x_coordinates)
+        min_y = np.min(y_coordinates)
+        range_x = np.max(x_coordinates) - min_x
+        range_y = np.max(y_coordinates) - min_y
+
+        if reference_axis == 'x-axis':
+            x_values = normalize(min_x, range_x, x_absolute)
+            y_values = normalize(min_y, range_x, y_absolute)
+
+        elif reference_axis == 'y-axis':
+            x_values = normalize(min_x, range_y, x_absolute)
+            y_values = normalize(min_y, range_y, y_absolute)
+
+        else:
+            x_values = normalize(min_x, range_x, x_absolute)
+            y_values = normalize(min_y, range_y, x_absolute)
+
         z_values = normalize(np.min(z_coordinates),
-                             np.max(z_coordinates),
+                             np.max(z_coordinates) - np.min(z_coordinates),
                              z_absolute)
 
         # Return the normalized coordinates as x, y, z values
