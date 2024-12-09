@@ -5,7 +5,7 @@ from matplotlib.colors import ListedColormap
 import pyvista as pv
 import vtk
 
-from moving_camera import get_camera_position_per_frame
+from .moving_camera import get_camera_position_per_frame
 
 
 def resize_ds(

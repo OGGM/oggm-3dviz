@@ -28,6 +28,7 @@ def get_camera_position_per_frame(viz_object, camera_trajectory, nr_frames,
         end_angle = kwargs_camera_trajectory['end_angle']
         camera_height = kwargs_camera_trajectory['camera_height']
         camera_radius = kwargs_camera_trajectory['camera_radius']
+        camera_reference_axis = kwargs_camera_trajectory['camera_radius_reference']
 
         # Calculate the angle to increment for each frame to complete the rotation
         angle_per_frame = (end_angle - start_angle) / nr_frames
@@ -46,11 +47,12 @@ def get_camera_position_per_frame(viz_object, camera_trajectory, nr_frames,
             z_values.append(camera_height)
 
         if normalized_coords:
-            x_values, y_values, z_values = viz_object.get_absolute_coordinates(
-                x_normalized=np.array(x_values),
-                y_normalized=np.array(y_values),
-                z_normalized=np.array(z_values)
-            )
+                x_values, y_values, z_values = viz_object.get_absolute_coordinates(
+                    x_normalized=np.array(x_values),
+                    y_normalized=np.array(y_values),
+                    z_normalized=np.array(z_values),
+                    reference_axis=camera_reference_axis
+                )
 
     else:
         raise NotImplementedError(f'Camera trajectory {camera_trajectory} not '
