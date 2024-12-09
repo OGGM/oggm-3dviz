@@ -537,7 +537,7 @@ class Glacier3DViz:
         else:
             return self._init_widgets(plotter, glacier_algo)
 
-    def get_camera_position(self, normalized=False):
+    def get_camera_position(self, normalized=True):
         if self.plotter:
             camera_position = self.plotter.camera.position
 
@@ -571,7 +571,7 @@ class Glacier3DViz:
 
     def export_animation(self, filename="animation.mp4", framerate=10,
                          quality=5, camera_trajectory=None,
-                         kwargs_camera_trajectory={}, **kwargs):
+                         kwargs_camera_trajectory=None, **kwargs):
         """
         Export an animation of the glacier model.
 
@@ -581,48 +581,66 @@ class Glacier3DViz:
         framerate: int
             Frames per second for the video. Defaults to 10.
         quality: int
-            Quality of the output video (scale may vary based on the library). Defaults to 5.
-        camera_trajectory: str
+            Quality of the output video (scale may vary based on the library).
+            Defaults to 5.
+        camera_trajectory: None | str
             Type of camera movement. Options are:
             - `'linear'`: Moves the camera along a straight line.
             - `'rotate'`: Rotates the camera around the glacier.
-            - `None`: Keeps the camera stationary.
-            Defaults to `'linear'`.
-        **kwargs: dict, optional
-            Additional keyword arguments to customize the animation based on the camera trajectory:
+            If None, the camera keeps stationary.
+            Default is None.
+        kwargs_camera_trajectory: None | dict
+            Additional keyword arguments to customize the animation based on the
+            selected camera trajectory:
 
+            - For all trajectories:
+                - normalized_coordinates: bool
+                    Are provided coordinates normalized?
+                    Default is True.
             - For `'linear'` trajectory:
                 - linear_camera_start_and_end_point: tuple
-                    Start and end points for the camera. The points are multiplied by the topography dimensions.
+                    Start and end points for the camera. The points are
+                    multiplied by the topography dimensions.
                     Examples:
                     - `(0, 0, 0)`: The topography center.
                     - `(1, 0, 0)`: At the edge.
-                    - `[(0, -1, 10), (0, -0.5, 5)]`: Zooms from an edge to the center.
+                    - `[(0, -1, 10), (0, -0.5, 5)]`: Zooms from an edge to the
+                      center.
 
             - For `'rotate'` trajectory:
                 - rotate_camera_start_and_end_angle: tuple
-                    Start and end angles for the camera. Range: 0 to 360. Example: `[200, 220]`.
+                    Start and end angles for the camera. Range: 0 to 360.
+                    Example: `[200, 220]`.
                 - rotate_camera_height: int
-                    The height of the rotated camera, multiplied by the elevation range. Defaults to 5.
+                    The height of the rotated camera, multiplied by the
+                    elevation range. Defaults to 5.
                 - rotate_camera_radius: int
-                    The radius of the rotated camera, multiplied by the map dimensions. Defaults to 1.
+                    The radius of the rotated camera, multiplied by the map
+                    dimensions. Defaults to 1.
+        **kwargs: dict, optional
+            Additional keyword arguments passed to _init_plotter.
         """
 
         # Initialize the plotter and glacier algorithm with additional parameters
         plotter, glacier_algo = self._init_plotter(**kwargs)
 
-        # Determine camera positions based on the chosen trajectory type
-        camera_position_per_frame = get_camera_position_per_frame(
-            viz_object=self,
-            camera_trajectory=camera_trajectory,
-            nr_frames=self.dataset[self.time].size,
-            kwargs_camera_trajectory=kwargs_camera_trajectory)
+        if camera_trajectory:
+            # Determine camera positions based on the chosen trajectory type
+            camera_position_per_frame = get_camera_position_per_frame(
+                viz_object=self,
+                camera_trajectory=camera_trajectory,
+                nr_frames=self.dataset[self.time].size,
+                kwargs_camera_trajectory=kwargs_camera_trajectory)
+        else:
+            camera_position_per_frame = None
 
-        # Open a movie file to record the animation with specified framerate and quality
+        # Open a movie file to record the animation with specified framerate and
+        # quality
         plotter.open_movie(filename, framerate=framerate, quality=quality)
 
         # Display the plotter window without closing it automatically
-        # 'jupyter_backend="static"' is used for compatibility with Jupyter notebooks
+        # 'jupyter_backend="static"' is used for compatibility with Jupyter
+        # notebooks
         plotter.show(auto_close=False, jupyter_backend="static")
 
         # Iterate through each time step to update the glacier and capture frames
@@ -664,11 +682,11 @@ class Glacier3DViz:
 
         Parameters:
         - x_normalized: float or array-like
-            Normalized x-coordinates in the range [-1, 1], where -1 corresponds to
-            one edge of the domain and 1 corresponds to the opposite edge.
+            Normalized x-coordinates in the range [-1, 1], where -1 corresponds
+            to one edge of the domain and 1 corresponds to the opposite edge.
         - y_normalized: float or array-like
-            Normalized y-coordinates in the range [-1, 1], where -1 corresponds to
-            one edge of the domain and 1 corresponds to the opposite edge.
+            Normalized y-coordinates in the range [-1, 1], where -1 corresponds
+            to one edge of the domain and 1 corresponds to the opposite edge.
         - z_normalized: float or array-like,
             Normalized z-coordinates (elevation) in the range [-1, 1], where -1
             corresponds to the minimum elevation and 1 to the maximum.
@@ -682,30 +700,20 @@ class Glacier3DViz:
         y_coordinates = self.dataset[self.y].data
         z_coordinates = self.dataset[self.topo_bedrock].data
 
-        # Compute the range of x and y coordinates
-        # (absolute difference between max and min)
-        x_range = abs(x_coordinates[-1] - x_coordinates[0])
-        y_range = abs(y_coordinates[-1] - y_coordinates[0])
+        # actual function for getting absolute values
+        def denormalize(minimum, maximum, normalized):
+            return (normalized + 1) * (maximum - minimum) / 2 + minimum
 
-        # Compute the range of z coordinates
-        # (difference between max and min elevation)
-        z_range = np.max(z_coordinates) - np.min(z_coordinates)
+        x_values = denormalize(np.min(x_coordinates),
+                               np.max(x_coordinates),
+                               x_normalized)
+        y_values = denormalize(np.min(y_coordinates),
+                               np.max(y_coordinates),
+                               y_normalized)
+        z_values = denormalize(np.min(z_coordinates),
+                               np.max(z_coordinates),
+                               z_normalized)
 
-        # Use the maximum of x_range and y_range to ensure scaling consistency
-        # for x and y
-        max_range = max(x_range, y_range)
-
-        # Convert normalized x values to absolute coordinates
-        x_values = x_normalized * max_range
-        x_values += np.mean(x_coordinates)
-
-        # Convert normalized y values to absolute coordinates
-        y_values = y_normalized * max_range
-        y_values += np.mean(y_coordinates)
-
-        # Convert normalized z values to absolute coordinates
-        z_values = z_normalized * z_range
-        z_values += np.min(z_coordinates)
         # Return the absolute coordinates
         return x_values, y_values, z_values
 
@@ -735,31 +743,19 @@ class Glacier3DViz:
         y_coordinates = self.dataset[self.y].data
         z_coordinates = self.dataset[self.topo_bedrock].data
 
-        # Calculate the range of x and y coordinates
-        # (extent of the domain in these dimensions)
-        x_range = abs(x_coordinates[-1] - x_coordinates[0])
-        y_range = abs(y_coordinates[-1] - y_coordinates[0])
+        # actual function for normalizing
+        def normalize(minimum, maximum, absolute):
+            return 2 * (absolute - minimum) / (maximum - minimum) - 1
 
-        # Calculate the range of z coordinates (vertical extent of the topography)
-        z_range = np.max(z_coordinates) - np.min(z_coordinates)
-
-        # Determine the maximum range between x and y to ensure consistent scaling
-        max_range = max(x_range, y_range)
-
-        # Normalize the x coordinate: subtract the mean and divide by the
-        # maximum range
-        x_absolute -= np.mean(x_coordinates)
-        x_values = x_absolute / max_range
-
-        # Normalize the y coordinate: subtract the mean and divide by the
-        # maximum range
-        y_absolute -= np.mean(y_coordinates)
-        y_values = y_absolute / max_range
-
-        # Normalize the z coordinate: subtract the minimum and divide by the
-        # vertical range
-        z_absolute -= np.min(z_coordinates)
-        z_values = z_absolute / z_range
+        x_values = normalize(np.min(x_coordinates),
+                             np.max(x_coordinates),
+                             x_absolute)
+        y_values = normalize(np.min(y_coordinates),
+                             np.max(y_coordinates),
+                             y_absolute)
+        z_values = normalize(np.min(z_coordinates),
+                             np.max(z_coordinates),
+                             z_absolute)
 
         # Return the normalized coordinates as x, y, z values
         return x_values, y_values, z_values

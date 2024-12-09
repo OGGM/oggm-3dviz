@@ -5,6 +5,8 @@ from matplotlib.colors import ListedColormap
 import pyvista as pv
 import vtk
 
+from moving_camera import get_camera_position_per_frame
+
 
 def resize_ds(
         ds: xr.Dataset,
@@ -184,7 +186,8 @@ def side_by_side_visualization(
         kwargs_screenshot: dict | None = None,
         framerate: int = 10,
         quality: int = 5,
-        moving_camera_start_and_end_point: list | None = None,
+        camera_trajectory=None,
+        kwargs_camera_trajectory=None,
 ):
     """
     Function for creating side by side animation and/or plots. It is assumed
@@ -223,6 +226,40 @@ def side_by_side_visualization(
         Framerate for pyvista.Plotter.open_movie. Default is 10.
     quality : int
         Quality for pyvista.Plotter.open_movie. Default is 5.
+    camera_trajectory: None | str
+        Type of camera movement. Options are:
+        - `'linear'`: Moves the camera along a straight line.
+        - `'rotate'`: Rotates the camera around the glacier.
+        If None, the camera keeps stationary.
+        Default is None.
+    kwargs_camera_trajectory: None | dict
+        Additional keyword arguments to customize the animation based on the
+        selected camera trajectory:
+
+        - For all trajectories:
+            - normalized_coordinates: bool
+                Are provided coordinates normalized?
+                Default is True.
+        - For `'linear'` trajectory:
+            - linear_camera_start_and_end_point: tuple
+                Start and end points for the camera. The points are
+                multiplied by the topography dimensions.
+                Examples:
+                - `(0, 0, 0)`: The topography center.
+                - `(1, 0, 0)`: At the edge.
+                - `[(0, -1, 10), (0, -0.5, 5)]`: Zooms from an edge to the
+                  center.
+
+        - For `'rotate'` trajectory:
+            - rotate_camera_start_and_end_angle: tuple
+                Start and end angles for the camera. Range: 0 to 360.
+                Example: `[200, 220]`.
+            - rotate_camera_height: int
+                The height of the rotated camera, multiplied by the
+                elevation range. Defaults to 5.
+            - rotate_camera_radius: int
+                The radius of the rotated camera, multiplied by the map
+                dimensions. Defaults to 1.
     """
 
     # by default, we only use one row
@@ -254,12 +291,13 @@ def side_by_side_visualization(
     window_size_x = kwargs_plotter['window_size'][0] * shape[1]
     window_size_y = kwargs_plotter['window_size'][1] * shape[0]
 
-    if moving_camera_start_and_end_point:
+    if camera_trajectory:
+        # Determine camera positions based on the chosen trajectory type
         camera_position_per_frame = get_camera_position_per_frame(
-            start_point=moving_camera_start_and_end_point[0],
-            end_point=moving_camera_start_and_end_point[1],
+            viz_object=viz_objects[0],
+            camera_trajectory=camera_trajectory,
             nr_frames=viz_objects[0].dataset[viz_objects[0].time].size,
-        )
+            kwargs_camera_trajectory=kwargs_camera_trajectory)
     else:
         camera_position_per_frame = None
 
@@ -321,12 +359,3 @@ def side_by_side_visualization(
             kwargs_screenshot = {}
         plotter.screenshot(filename_plot, **kwargs_screenshot)
         plotter.close()
-
-
-def get_camera_position_per_frame(start_point, end_point, nr_frames):
-
-    x_values = np.linspace(start_point[0], end_point[0], nr_frames)
-    y_values = np.linspace(start_point[1], end_point[1], nr_frames)
-    z_values = np.linspace(start_point[2], end_point[2], nr_frames)
-
-    return list(zip(x_values, y_values, z_values))
