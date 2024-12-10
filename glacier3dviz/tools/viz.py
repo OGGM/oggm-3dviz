@@ -60,10 +60,10 @@ class Glacier3DViz:
             name of the time coordinate in the dataset to be displayed
         x_crop: float| int | None
             number of grid points in x direction or crop factor between 0 and 1,
-            if None the complete extend is used. See utils.resize_ds
+            if None the complete extent is used. See utils.resize_ds
         y_crop: float | int | None
             number of grid points in y direction or crop factor between 0 and 1,
-            if None the complete extend is used. See utils.resize_ds
+            if None the complete extent is used. See utils.resize_ds
         additional_annotations: None | list
             list of additional annotations to be added to the map, see
             glacier3dviz.tools.map_annotations
@@ -106,7 +106,7 @@ class Glacier3DViz:
         self.additional_annotations_default = additional_annotations
         self.additional_annotations_use = additional_annotations
 
-        # resize map to given extend, if None the complete extend is used
+        # resize map to given extent, if None the complete extent is used
         self.dataset = resize_ds(
             dataset, x_crop, y_crop)
 
@@ -371,6 +371,7 @@ class Glacier3DViz:
 
         if 'camera_args' in kwargs:
             kwargs['camera_args'].setdefault('zoom', 1.)
+            kwargs['camera_args'].setdefault('normalized_position', True)
 
             if set_default:
                 self.camera_args_default = kwargs['camera_args']
@@ -471,6 +472,10 @@ class Glacier3DViz:
                 # zoom is not working with setattr()
                 pl.camera.zoom(value_cam)
             else:
+                if key_cam == 'position' and self.camera_args_use['normalized_position']:
+                    value_cam = self.get_absolute_coordinates(
+                        value_cam[0], value_cam[1], value_cam[2],
+                    )
                 setattr(pl.camera, key_cam, value_cam)
 
         self.glacier_algo = glacier_algo
@@ -546,6 +551,7 @@ class Glacier3DViz:
                                                       camera_position[1],
                                                       camera_position[2],
                                                       reference_axis)
+                camera_position = [float(pos) for pos in camera_position]
 
             return camera_position
         else:
@@ -585,39 +591,14 @@ class Glacier3DViz:
             Quality of the output video (scale may vary based on the library).
             Defaults to 5.
         camera_trajectory: None | str
-            Type of camera movement. Options are:
-            - `'linear'`: Moves the camera along a straight line.
-            - `'rotate'`: Rotates the camera around the glacier.
+            Type of camera movement. See docstring of
+            moving_camera.get_camera_position_per_frame for available options.
             If None, the camera keeps stationary.
             Default is None.
         kwargs_camera_trajectory: None | dict
             Additional keyword arguments to customize the animation based on the
-            selected camera trajectory:
-
-            - For all trajectories:
-                - normalized_coordinates: bool
-                    Are provided coordinates normalized?
-                    Default is True.
-            - For `'linear'` trajectory:
-                - linear_camera_start_and_end_point: tuple
-                    Start and end points for the camera. The points are
-                    multiplied by the topography dimensions.
-                    Examples:
-                    - `(0, 0, 0)`: The topography center.
-                    - `(1, 0, 0)`: At the edge.
-                    - `[(0, -1, 10), (0, -0.5, 5)]`: Zooms from an edge to the
-                      center.
-
-            - For `'rotate'` trajectory:
-                - rotate_camera_start_and_end_angle: tuple
-                    Start and end angles for the camera. Range: 0 to 360.
-                    Example: `[200, 220]`.
-                - rotate_camera_height: int
-                    The height of the rotated camera, multiplied by the
-                    elevation range. Defaults to 5.
-                - rotate_camera_radius: int
-                    The radius of the rotated camera, multiplied by the map
-                    dimensions. Defaults to 1.
+            selected camera trajectory. See docstring of
+            moving_camera.get_camera_position_per_frame for available options.
         **kwargs: dict, optional
             Additional keyword arguments passed to _init_plotter.
         """
@@ -693,9 +674,8 @@ class Glacier3DViz:
             Normalized z-coordinates (elevation) in the range [-1, 1], where -1
             corresponds to the minimum elevation and 1 to the maximum.
         - reference_axis: str, optional
-            Can be one of the following: 'x-axis' or 'y-axis'.
-            Defines the axis along which the coordinates are normalized. For a
-            quadratic coordinate system.
+            Can be 'x' or 'y'. Defines the axis along which the coordinates are
+            normalized. For a quadratic coordinate system.
 
         Returns:
         - tuple of numpy arrays
@@ -707,33 +687,31 @@ class Glacier3DViz:
         z_coordinates = self.dataset[self.topo_bedrock].data
 
         # actual function for getting absolute values
-        def denormalize(minimum, range, normalized):
-            return (normalized + 1) * range / 2 + minimum
+        def denormalize(minimum, range_value, normalized):
+            return (normalized + 1) * range_value / 2 + minimum
 
         # Normalize values based on the reference axis logic
         min_x = np.min(x_coordinates)
-        min_y = np.min(y_coordinates)
         range_x = np.max(x_coordinates) - min_x
+        min_y = np.min(y_coordinates)
         range_y = np.max(y_coordinates) - min_y
-        if reference_axis=='x-axis':
-            x_values = denormalize(min_x, range_x, x_normalized)
-            y_values = denormalize(min_y, range_x, y_normalized)
+        if reference_axis == 'x':
+            y_normalized = y_normalized * range_x / range_y
 
-        elif reference_axis=='y-axis':
-            x_values = denormalize(min_x, range_y, x_normalized)
-            y_values = denormalize(min_y, range_y, y_normalized)
-        else:
-            x_values = denormalize(min_x, range_x, x_normalized)
-            y_values = denormalize(min_y, range_y, y_normalized)
+        elif reference_axis == 'y':
+            x_normalized = x_normalized * range_y / range_x
 
+        x_values = denormalize(min_x, range_x, x_normalized)
+        y_values = denormalize(min_y, range_y, y_normalized)
         z_values = denormalize(np.min(z_coordinates),
-                               np.max(z_coordinates),
+                               np.max(z_coordinates) - np.min(z_coordinates),
                                z_normalized)
 
         # Return the absolute coordinates
         return x_values, y_values, z_values
 
-    def get_normalized(self, x_absolute, y_absolute, z_absolute, reference_axis=None):
+    def get_normalized(self, x_absolute, y_absolute, z_absolute,
+                       reference_axis=None):
         """
         Converts absolute geographic coordinates to normalized coordinates.
 
@@ -745,9 +723,8 @@ class Glacier3DViz:
         - z_absolute: float or array-like
             Absolute z-coordinates (elevation) in the units of the dataset.
        - reference_axis: str, optional
-            Can be one of the following: 'x-axis' or 'y-axis'.
-            Defines the axis along which the coordinates are normalized. For a
-            quadratic coordinate system.
+            Can be 'x' or 'y'. Defines the axis along which the coordinates are
+            normalized. For a quadratic coordinate system.
 
         Returns:
         - tuple of numpy arrays
@@ -769,21 +746,16 @@ class Glacier3DViz:
 
         # Normalize values based on the reference axis logic
         min_x = np.min(x_coordinates)
-        min_y = np.min(y_coordinates)
         range_x = np.max(x_coordinates) - min_x
+        min_y = np.min(y_coordinates)
         range_y = np.max(y_coordinates) - min_y
+        x_values = normalize(min_x, range_x, x_absolute)
+        y_values = normalize(min_y, range_y, y_absolute)
+        if reference_axis == 'x':
+            y_values = y_values * range_y / range_x
 
-        if reference_axis == 'x-axis':
-            x_values = normalize(min_x, range_x, x_absolute)
-            y_values = normalize(min_y, range_x, y_absolute)
-
-        elif reference_axis == 'y-axis':
-            x_values = normalize(min_x, range_y, x_absolute)
-            y_values = normalize(min_y, range_y, y_absolute)
-
-        else:
-            x_values = normalize(min_x, range_x, x_absolute)
-            y_values = normalize(min_y, range_y, x_absolute)
+        elif reference_axis == 'y':
+            x_values = x_values * range_x / range_y
 
         z_values = normalize(np.min(z_coordinates),
                              np.max(z_coordinates) - np.min(z_coordinates),
