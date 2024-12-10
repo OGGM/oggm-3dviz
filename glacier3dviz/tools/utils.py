@@ -227,39 +227,14 @@ def side_by_side_visualization(
     quality : int
         Quality for pyvista.Plotter.open_movie. Default is 5.
     camera_trajectory: None | str
-        Type of camera movement. Options are:
-        - `'linear'`: Moves the camera along a straight line.
-        - `'rotate'`: Rotates the camera around the glacier.
+        Type of camera movement. See docstring of
+        moving_camera.get_camera_position_per_frame for available options.
         If None, the camera keeps stationary.
         Default is None.
     kwargs_camera_trajectory: None | dict
         Additional keyword arguments to customize the animation based on the
-        selected camera trajectory:
-
-        - For all trajectories:
-            - normalized_coordinates: bool
-                Are provided coordinates normalized?
-                Default is True.
-        - For `'linear'` trajectory:
-            - linear_camera_start_and_end_point: tuple
-                Start and end points for the camera. The points are
-                multiplied by the topography dimensions.
-                Examples:
-                - `(0, 0, 0)`: The topography center.
-                - `(1, 0, 0)`: At the edge.
-                - `[(0, -1, 10), (0, -0.5, 5)]`: Zooms from an edge to the
-                  center.
-
-        - For `'rotate'` trajectory:
-            - rotate_camera_start_and_end_angle: tuple
-                Start and end angles for the camera. Range: 0 to 360.
-                Example: `[200, 220]`.
-            - rotate_camera_height: int
-                The height of the rotated camera, multiplied by the
-                elevation range. Defaults to 5.
-            - rotate_camera_radius: int
-                The radius of the rotated camera, multiplied by the map
-                dimensions. Defaults to 1.
+        selected camera trajectory. See docstring of
+        moving_camera.get_camera_position_per_frame for available options.
     """
 
     # by default, we only use one row
