@@ -87,8 +87,8 @@ class Glacier3DViz:
             additional arguments for the texture, see texture.get_topo_texture
         text_time_args: dict | None
             additional arguments for the time text, at least it must contain
-            'time' with a string on which .format(current_year) can be applied,
-            e.g. 'time': 'year: {}', for other options see
+            'text' with a string on which .format(current_year) can be applied,
+            e.g. 'text': 'year: {}', for other options see
             pyvista.Plotter.add_text
         light_args: dict | None
             additional arguments for the light, see pyvista.Light
