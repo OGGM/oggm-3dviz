@@ -210,7 +210,7 @@ class Glacier3DViz:
         # here we add and potentially download background map data
         # and apply it as the topographic texture
         if use_texture:
-            self.set_topo_texture()
+            self.set_topo_texture(show_topo_side_walls=show_topo_side_walls)
 
         self.topo_mesh = None
         self.plotter = None
@@ -396,7 +396,7 @@ class Glacier3DViz:
         else:
             self.texture_args_use = self.texture_args_default
 
-    def set_topo_texture(self):
+    def set_topo_texture(self, show_topo_side_walls=False):
         bbox = (
             self.dataset[self.x].min().item(),
             self.dataset[self.y].min().item(),
@@ -409,6 +409,7 @@ class Glacier3DViz:
         self.add_mesh_topo_args_default['texture'] = get_topo_texture(
             bbox,
             srs=srs,
+            show_topo_side_walls=show_topo_side_walls,
             **self.texture_args_use,
         )
 

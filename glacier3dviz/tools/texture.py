@@ -48,6 +48,7 @@ def get_topo_texture(
     background_source: Any = cx.providers.Esri.WorldImagery,
     zoom_adjust: int = 1,
     remove_ice: bool = True,
+    show_topo_side_walls: bool = False
 ) -> pv.Texture:
     """Get a texture for the bedrock surface topography from
     satellite imagery data.
@@ -77,6 +78,9 @@ def get_topo_texture(
         If True, processed the background image so that the intensity of
         white areas (snow, ice) is reduced (default: True). Relevant only
         when true-color satellite imagery is used as background source.
+    show_topo_side_walls : bool, optional
+        If True, the pixels on the edge of the texture will be colored as otherwise the side walls have artifacts
+         of the texture color. (default: False).
 
     Returns
     -------
@@ -115,5 +119,13 @@ def get_topo_texture(
                           coords={"x": x, "y": y},
                           dims=("y", "x", "c"))
     da_img = da_img.sel(x=slice(west, east), y=slice(north, south))
+
+    # adapt the side wall color
+    if show_topo_side_walls:
+        side_wall_color = (100, 100, 100) # grey color
+        da_img[:, :4, :] = np.array(side_wall_color)
+        da_img[:, -4:, :] = np.array(side_wall_color)
+        da_img[:4, :, :] = np.array(side_wall_color)
+        da_img[-4:, :, ] = np.array(side_wall_color)
 
     return pv.Texture(da_img.values)
