@@ -1,6 +1,7 @@
 from pyproj import Proj
 import numpy as np
 import pyvista as pv
+from PIL import Image
 
 from . import viz, get_topo_texture
 from .utils import check_color
@@ -249,28 +250,36 @@ class MaskAnnotation(MapAnnotation):
 
         # define color
         self.mask_color = check_color(mask_color)
-        self.mask_texture = None
 
-    def set_mask_texture(self, glacier_3dviz: viz.Glacier3DViz):
-        # define the texture
+    def add_mask_to_texture(self, glacier_3dviz: viz.Glacier3DViz):
+        # define the mask texture
         mask = glacier_3dviz.dataset[self.mask_data]
         mask_texture = np.zeros((*mask.shape, 4),
                                 dtype=np.uint8)
         mask_texture[mask == 1, :] = self.mask_color
-        self.mask_texture = pv.numpy_to_texture(mask_texture)
+
+        # get current topo-texture
+        texture = glacier_3dviz.add_mesh_topo_args_default['texture']
+
+        # convert texture/numpy array to a PIL Image for resizing and composing
+        texture_img = Image.fromarray(texture.to_array()).convert('RGBA')
+        mask_img = Image.fromarray(mask_texture)
+
+        # Resizing the mask
+        mask_img = mask_img.resize(texture_img.size, Image.Resampling.LANCZOS)
+
+        # composing the two images by using their alpha channels
+        texture_with_mask = Image.alpha_composite(texture_img, mask_img)
+
+        # setting the texture with mask as new topo texture
+        glacier_3dviz.add_mesh_topo_args_default['texture'] = pv.Texture(np.array(texture_with_mask))
 
     def add_annotation(self,
                        glacier_3dviz: viz.Glacier3DViz,
                        plotter: pv.Plotter,
                        ):
-        self.set_mask_texture(glacier_3dviz)
 
-        topo_mesh = glacier_3dviz.topo_mesh.copy()
-        topo_mesh.points[:, 2] += self.add_z
-
-        plotter.add_mesh(topo_mesh,
-                         texture=self.mask_texture)
-
+        self.add_mask_to_texture(glacier_3dviz)
 
 class LegendAnnotation(MapAnnotation):
     def __init__(self,
