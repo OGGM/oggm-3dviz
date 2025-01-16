@@ -441,8 +441,7 @@ class Glacier3DViz:
         else:
             pl = pv.Plotter(**self.plotter_args_use)
 
-        # add topography with texture (color)
-        pl.add_mesh(self.topo_mesh, **self.add_mesh_topo_args_use)
+
 
         # add glacier surface, colored by thickness, using custom colorbar
         custom_colorbar = pv.LookupTable(
@@ -461,6 +460,9 @@ class Glacier3DViz:
         if self.additional_annotations_use is not None:
             for annotation in self.additional_annotations_use:
                 annotation.add_annotation(glacier_3dviz=self, plotter=pl)
+
+        # add topography with texture (color)
+        pl.add_mesh(self.topo_mesh, **self.add_mesh_topo_args_use)
 
         light = pv.Light(**self.light_args_use)
         pl.add_light(light)
