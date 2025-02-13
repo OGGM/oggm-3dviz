@@ -157,13 +157,16 @@ def get_topo_texture(
                           coords={"x": x, "y": y},
                           dims=("y", "x", "c"))
     da_img = da_img.sel(x=slice(west, east), y=slice(north, south))
-    texture_dims = da_img.shape
-    sidewall_pixels = int(math.ceil(texture_dims[0]/data_dims[0]))
+
     # adapt the side wall color
     if show_topo_side_walls:
+        texture_dims = da_img.shape
+        sidewall_pixels = int(math.ceil(texture_dims[0] / data_dims[0]))
         sidewall_color = _input_color_to_rgb(sidewall_color)
+        # if there is no (valid) sidewall color given, choose a simple grey:
         if sidewall_color is None:
             sidewall_color = (100, 100, 100) # grey color
+
         da_img[:, :sidewall_pixels, :] = np.array(sidewall_color)
         da_img[:, -sidewall_pixels:, :] = np.array(sidewall_color)
         da_img[:sidewall_pixels, :, :] = np.array(sidewall_color)
