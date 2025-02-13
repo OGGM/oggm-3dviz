@@ -31,6 +31,7 @@ class Glacier3DViz:
         ice_thick_lookuptable_args: dict | None = None,
         use_texture: bool = False,
         show_topo_side_walls: bool = False,
+        sidewall_color: tuple | str | None = None,
         texture_args: dict | None = None,
         text_time_args: dict | None = None,
         light_args: dict | None = None,
@@ -210,7 +211,7 @@ class Glacier3DViz:
         # here we add and potentially download background map data
         # and apply it as the topographic texture
         if use_texture:
-            self.set_topo_texture(show_topo_side_walls=show_topo_side_walls)
+            self.set_topo_texture(show_topo_side_walls=show_topo_side_walls, sidewall_color=sidewall_color)
 
         self.topo_mesh = None
         self.plotter = None
@@ -396,20 +397,23 @@ class Glacier3DViz:
         else:
             self.texture_args_use = self.texture_args_default
 
-    def set_topo_texture(self, show_topo_side_walls=False):
+    def set_topo_texture(self, show_topo_side_walls=False, sidewall_color=None):
         bbox = (
             self.dataset[self.x].min().item(),
             self.dataset[self.y].min().item(),
             self.dataset[self.x].max().item(),
             self.dataset[self.y].max().item(),
         )
+        data_dims = ((self.dataset[self.y].shape)[0], (self.dataset[self.x].shape)[0])
 
         srs = self.dataset.attrs["pyproj_srs"]
 
         self.add_mesh_topo_args_default['texture'] = get_topo_texture(
             bbox,
+            data_dims,
             srs=srs,
             show_topo_side_walls=show_topo_side_walls,
+            sidewall_color=sidewall_color,
             **self.texture_args_use,
         )
 
